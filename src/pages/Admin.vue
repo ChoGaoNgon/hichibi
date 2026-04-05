@@ -457,7 +457,7 @@ const fetchCategories = async () => {
 const fetchVouchers = async () => {
   if (!authStore.isAdmin) return;
   try {
-    const snapshot = await getDocs(collection(db, 'vouchers'));
+    const snapshot = await getDocs(query(collection(db, 'vouchers'), orderBy('createdAt', 'desc')));
     vouchers.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
   } catch (error) {
     console.error('Error fetching vouchers:', error);
@@ -623,7 +623,7 @@ const categoryForm = ref({
 
 // Delete Confirmation State
 const isDeleteConfirmOpen = ref(false);
-const itemToDelete = ref<{ id: string; type: 'product' | 'category' } | null>(null);
+const itemToDelete = ref<{ id: string; type: 'product' | 'category' | 'voucher' } | null>(null);
 
 const openProductModal = (product?: Product) => {
   if (product) {
@@ -775,7 +775,7 @@ const saveCategory = async () => {
   }
 };
 
-const confirmDelete = (id: string, type: 'product' | 'category') => {
+const confirmDelete = (id: string, type: 'product' | 'category' | 'voucher') => {
   itemToDelete.value = { id, type };
   isDeleteConfirmOpen.value = true;
 };
@@ -786,19 +786,24 @@ const executeDelete = async () => {
   
   isDeleting.value = true;
   try {
-    const collectionName = itemToDelete.value.type === 'product' ? 'products' : 'categories';
+    const type = itemToDelete.value.type;
+    const collectionName = type === 'product' ? 'products' : type === 'category' ? 'categories' : 'vouchers';
     await deleteDoc(doc(db, collectionName, itemToDelete.value.id));
-    toast.success(`Đã xóa ${itemToDelete.value.type === 'product' ? 'sản phẩm' : 'danh mục'}`);
     
-    if (itemToDelete.value.type === 'product') await fetchProducts();
-    else await fetchCategories();
+    const typeName = type === 'product' ? 'sản phẩm' : type === 'category' ? 'danh mục' : 'mã giảm giá';
+    toast.success(`Đã xóa ${typeName}`);
+    
+    if (type === 'product') await fetchProducts();
+    else if (type === 'category') await fetchCategories();
+    else if (type === 'voucher') await fetchVouchers();
 
     triggerAutoCacheUpdate();
     isDeleteConfirmOpen.value = false;
     itemToDelete.value = null;
   } catch (error) {
-    console.error(`Error deleting ${itemToDelete.value.type}`, error);
-    toast.error(`Có lỗi xảy ra khi xóa ${itemToDelete.value.type === 'product' ? 'sản phẩm' : 'danh mục'}`);
+    const typeName = itemToDelete.value?.type === 'product' ? 'sản phẩm' : itemToDelete.value?.type === 'category' ? 'danh mục' : 'mã giảm giá';
+    console.error(`Error deleting ${itemToDelete.value?.type}`, error);
+    toast.error(`Có lỗi xảy ra khi xóa ${typeName}`);
   } finally {
     isDeleting.value = false;
   }
