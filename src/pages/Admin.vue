@@ -858,9 +858,9 @@ const seedData = async () => {
 </script>
 
 <template>
-  <div v-if="authStore.isStaff" class="min-h-screen bg-gray-50 flex flex-col md:flex-row">
+  <div v-if="authStore.isStaff" class="min-h-screen bg-gray-50 flex flex-col md:flex-row print:bg-white print:min-h-0 print:block">
     <!-- Sidebar -->
-    <aside class="w-full md:w-80 bg-white border-r border-gray-100 p-8 space-y-12">
+    <aside class="w-full md:w-80 bg-white border-r border-gray-100 p-8 space-y-12 print:hidden">
       <div class="flex items-center gap-4 px-4">
         <div class="w-12 h-12 bg-orange-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-orange-600/20">
           <LayoutDashboard :size="28" />
@@ -905,7 +905,7 @@ const seedData = async () => {
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-grow p-8 md:p-16 overflow-y-auto no-scrollbar">
+    <main class="flex-grow p-8 md:p-16 overflow-y-auto no-scrollbar print:hidden">
       <div v-if="loading" class="flex justify-center py-32">
         <div class="w-12 h-12 border-4 border-orange-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
@@ -1050,6 +1050,7 @@ const seedData = async () => {
                       <p class="text-3xl font-black text-gray-900 tracking-tighter">{{ order.totalAmount.toLocaleString() }}đ</p>
                     </div>
                     <button 
+                      v-if="order.status !== 'cancelled'"
                       @click="printOrder(order)"
                       class="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all"
                     >
@@ -1795,78 +1796,78 @@ const seedData = async () => {
     </transition>
 
     <!-- Printable Order Receipt -->
-    <div id="print-area" v-if="orderToPrint" class="hidden print:block p-8 bg-white text-black w-full max-w-2xl mx-auto">
-      <div class="text-center mb-8 border-b border-gray-300 pb-6">
-        <h1 class="text-3xl font-black uppercase tracking-tighter mb-2">{{ storeInfo.name || 'THE COFFEE HOUSE' }}</h1>
-        <p class="text-sm text-gray-600 mb-1">{{ storeInfo.address || 'Địa chỉ cửa hàng' }}</p>
-        <p class="text-sm text-gray-600 mb-1">SĐT: {{ storeInfo.phone || '---' }}</p>
-        <div v-if="storeInfo.facebook || storeInfo.instagram" class="text-xs text-gray-500 mt-2">
+    <div id="print-area" v-if="orderToPrint" class="hidden print:block bg-white text-black w-[74mm] p-3 mx-auto text-[10px]">
+      <div class="text-center mb-3 border-b border-gray-300 pb-2">
+        <h1 class="text-sm font-black uppercase tracking-tighter mb-1">{{ storeInfo.name || 'THE COFFEE HOUSE' }}</h1>
+        <p class="text-[8px] text-gray-600 mb-0.5">{{ storeInfo.address || 'Địa chỉ cửa hàng' }}</p>
+        <p class="text-[8px] text-gray-600 mb-0.5">SĐT: {{ storeInfo.phone || '---' }}</p>
+        <div v-if="storeInfo.facebook || storeInfo.instagram" class="text-[8px] text-gray-500 mt-1">
           <span v-if="storeInfo.facebook">FB: {{ storeInfo.facebook }}</span>
           <span v-if="storeInfo.facebook && storeInfo.instagram"> | </span>
           <span v-if="storeInfo.instagram">IG: {{ storeInfo.instagram }}</span>
         </div>
       </div>
 
-      <div class="mb-6 space-y-2">
-        <h2 class="text-xl font-black uppercase tracking-tight text-center mb-4">HÓA ĐƠN THANH TOÁN</h2>
-        <div class="flex justify-between text-sm">
+      <div class="mb-3 space-y-1">
+        <h2 class="text-[11px] font-black uppercase tracking-tight text-center mb-2">HÓA ĐƠN THANH TOÁN</h2>
+        <div class="flex justify-between text-[9px]">
           <span class="font-bold">Mã đơn:</span>
           <span>#{{ orderToPrint.id.slice(-8).toUpperCase() }}</span>
         </div>
-        <div class="flex justify-between text-sm">
+        <div class="flex justify-between text-[9px]">
           <span class="font-bold">Ngày:</span>
           <span>{{ orderToPrint.createdAt.toDate().toLocaleString('vi-VN') }}</span>
         </div>
-        <div class="flex justify-between text-sm">
-          <span class="font-bold">Khách hàng:</span>
+        <div class="flex justify-between text-[9px]">
+          <span class="font-bold">Khách:</span>
           <span>{{ orderToPrint.customerName }}</span>
         </div>
-        <div class="flex justify-between text-sm">
+        <div class="flex justify-between text-[9px]">
           <span class="font-bold">SĐT:</span>
           <span>{{ orderToPrint.customerPhone }}</span>
         </div>
-        <div class="flex justify-between text-sm">
-          <span class="font-bold">Địa chỉ:</span>
+        <div class="flex justify-between text-[9px]">
+          <span class="font-bold">Đ/C:</span>
           <span>{{ orderToPrint.address || 'Tại quán' }}</span>
         </div>
       </div>
 
-      <div class="border-t border-b border-gray-300 py-4 mb-6">
-        <table class="w-full text-sm">
+      <div class="border-t border-b border-gray-300 py-2 mb-3">
+        <table class="w-full text-[9px]">
           <thead>
             <tr class="border-b border-gray-200">
-              <th class="text-left py-2">Món</th>
-              <th class="text-center py-2">SL</th>
-              <th class="text-right py-2">Thành tiền</th>
+              <th class="text-left py-1">Món</th>
+              <th class="text-center py-1 w-6">SL</th>
+              <th class="text-right py-1 w-14">Tiền</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(item, i) in orderToPrint.items" :key="i" class="border-b border-gray-100 last:border-0">
-              <td class="py-3">
+              <td class="py-1.5 pr-1">
                 <div class="font-bold">{{ item.name }} ({{ item.size }})</div>
-                <div v-if="item.toppings && item.toppings.length > 0" class="text-xs text-gray-500">
+                <div v-if="item.toppings && item.toppings.length > 0" class="text-[7px] text-gray-500">
                   + {{ item.toppings.join(', ') }}
                 </div>
               </td>
-              <td class="text-center py-3">{{ item.quantity }}</td>
-              <td class="text-right py-3">{{ (item.price * item.quantity).toLocaleString() }}đ</td>
+              <td class="text-center py-1.5">{{ item.quantity }}</td>
+              <td class="text-right py-1.5">{{ (item.price * item.quantity).toLocaleString() }}đ</td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <div class="space-y-2 mb-8">
-        <div v-if="orderToPrint.discountAmount" class="flex justify-between text-sm">
+      <div class="space-y-1 mb-4">
+        <div v-if="orderToPrint.discountAmount" class="flex justify-between text-[9px]">
           <span>Giảm giá:</span>
           <span>-{{ orderToPrint.discountAmount.toLocaleString() }}đ</span>
         </div>
-        <div class="flex justify-between text-xl font-black uppercase tracking-tighter pt-2 border-t border-gray-300">
+        <div class="flex justify-between text-[11px] font-black uppercase tracking-tighter pt-1 border-t border-gray-300">
           <span>Tổng cộng:</span>
           <span>{{ orderToPrint.totalAmount.toLocaleString() }}đ</span>
         </div>
       </div>
 
-      <div class="text-center text-sm text-gray-500 italic">
+      <div class="text-center text-[8px] text-gray-500 italic">
         Cảm ơn quý khách và hẹn gặp lại!
       </div>
     </div>
@@ -1875,17 +1876,16 @@ const seedData = async () => {
 
 <style scoped>
 @media print {
-  body * {
-    visibility: hidden;
+  @page {
+    size: 74mm 105mm;
+    margin: 0;
   }
-  #print-area, #print-area * {
-    visibility: visible;
-  }
-  #print-area {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
+  html, body {
+    width: 74mm;
+    height: 105mm;
+    margin: 0;
+    padding: 0;
+    background: white;
   }
 }
 </style>
