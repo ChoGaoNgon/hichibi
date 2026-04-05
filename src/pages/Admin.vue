@@ -24,7 +24,8 @@ import {
   Calendar,
   BarChart3,
   Store,
-  Printer
+  Printer,
+  RefreshCw
 } from 'lucide-vue-next';
 import { 
   db, 
@@ -92,6 +93,46 @@ const isSavingCategory = ref(false);
 const isUpdatingUser = ref(false);
 const isSeeding = ref(false);
 const isUpdatingStatus = ref(false);
+const isRefreshing = ref(false);
+
+const refreshData = async () => {
+  if (isRefreshing.value) return;
+  isRefreshing.value = true;
+  try {
+    switch (activeTab.value) {
+      case 'dashboard':
+        await Promise.all([fetchOrders(true), fetchProducts(), fetchCategories()]);
+        break;
+      case 'orders':
+        orders.value = [];
+        lastOrderDoc.value = null;
+        hasMoreOrders.value = true;
+        await fetchOrders(true);
+        break;
+      case 'products':
+        await fetchProducts();
+        break;
+      case 'categories':
+        await fetchCategories();
+        break;
+      case 'vouchers':
+        await fetchVouchers();
+        break;
+      case 'users':
+        await fetchUsers();
+        break;
+      case 'settings':
+        await fetchStoreInfo();
+        break;
+    }
+    toast.success('Đã làm mới dữ liệu');
+  } catch (error) {
+    console.error('Error refreshing data:', error);
+    toast.error('Có lỗi xảy ra khi làm mới dữ liệu');
+  } finally {
+    isRefreshing.value = false;
+  }
+};
 
 // Store Info State
 const storeInfo = ref({
@@ -142,6 +183,7 @@ const saveStoreInfo = async () => {
 
 // Order Filtering & Search
 const orderFilter = ref<OrderStatus | 'all'>('all');
+const orderDeliveryFilter = ref<'all' | 'delivery' | 'pickup' | 'dine-in'>('all');
 const orderSearch = ref('');
 const orders = ref<Order[]>([]);
 const lastOrderDoc = ref<any>(null);
@@ -194,10 +236,16 @@ const fetchOrders = async (isInitial = false) => {
 };
 
 const filteredOrders = computed(() => {
-  if (!orderSearch.value) return orders.value;
+  let result = orders.value;
+
+  if (orderDeliveryFilter.value !== 'all') {
+    result = result.filter(o => o.deliveryMethod === orderDeliveryFilter.value);
+  }
+
+  if (!orderSearch.value) return result;
   
   const search = orderSearch.value.toLowerCase().trim();
-  return orders.value.filter(o => {
+  return result.filter(o => {
     const nameMatch = search.length >= 3 && o.customerName.toLowerCase().includes(search);
     const phoneMatch = search.length >= 4 && o.customerPhone.includes(search);
     return nameMatch || phoneMatch;
@@ -910,7 +958,17 @@ const seedData = async () => {
         <div class="w-12 h-12 border-4 border-orange-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
 
-      <div v-else class="max-w-6xl mx-auto space-y-16">
+      <div v-else class="max-w-6xl mx-auto space-y-8">
+        <div class="flex justify-end">
+          <button 
+            @click="refreshData" 
+            :disabled="isRefreshing"
+            class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-black uppercase tracking-widest text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50"
+          >
+            <RefreshCw :size="14" :class="{ 'animate-spin': isRefreshing }" /> Làm mới dữ liệu
+          </button>
+        </div>
+
         <!-- Dashboard Tab -->
         <div v-if="activeTab === 'dashboard'" class="space-y-16">
           <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
@@ -1021,6 +1079,16 @@ const seedData = async () => {
                   <option value="cancelled">Đã hủy</option>
                 </select>
               </div>
+
+              <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl border border-gray-100 shadow-sm">
+                <Truck :size="14" class="text-gray-400" />
+                <select v-model="orderDeliveryFilter" class="text-[10px] font-black uppercase tracking-widest bg-transparent border-none focus:ring-0 cursor-pointer">
+                  <option value="all">Tất cả PT giao</option>
+                  <option value="delivery">Giao hàng</option>
+                  <option value="pickup">Đến lấy</option>
+                  <option value="dine-in">Tại quán</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -1068,6 +1136,17 @@ const seedData = async () => {
                       <p class="font-black text-gray-900 uppercase tracking-tight">{{ order.customerName }}</p>
                       <p class="text-sm text-gray-600 font-bold">{{ order.customerPhone }}</p>
                       <p class="text-sm text-gray-500 leading-relaxed">{{ order.address }}</p>
+                      <p class="text-xs font-bold mt-2 inline-flex items-center gap-1.5 px-2 py-1 rounded-lg"
+                         :class="{
+                           'bg-blue-50 text-blue-600': order.deliveryMethod === 'delivery',
+                           'bg-purple-50 text-purple-600': order.deliveryMethod === 'pickup',
+                           'bg-green-50 text-green-600': order.deliveryMethod === 'dine-in'
+                         }">
+                        <Truck v-if="order.deliveryMethod === 'delivery'" :size="12" />
+                        <ShoppingBag v-else-if="order.deliveryMethod === 'pickup'" :size="12" />
+                        <Coffee v-else :size="12" />
+                        {{ order.deliveryMethod === 'delivery' ? 'Giao hàng tận nơi' : order.deliveryMethod === 'pickup' ? 'Đến lấy tại quán' : 'Dùng tại quán' }}
+                      </p>
                     </div>
                   </div>
                   <div class="space-y-4">
