@@ -22,7 +22,9 @@ import {
   ArrowUpDown,
   Ticket,
   Calendar,
-  BarChart3
+  BarChart3,
+  Store,
+  Printer
 } from 'lucide-vue-next';
 import { 
   db, 
@@ -34,6 +36,7 @@ import {
   deleteDoc, 
   addDoc, 
   setDoc,
+  getDoc,
   Timestamp, 
   getDocs, 
   writeBatch,
@@ -89,6 +92,53 @@ const isSavingCategory = ref(false);
 const isUpdatingUser = ref(false);
 const isSeeding = ref(false);
 const isUpdatingStatus = ref(false);
+
+// Store Info State
+const storeInfo = ref({
+  name: '',
+  address: '',
+  phone: '',
+  facebook: '',
+  instagram: ''
+});
+const isSavingStoreInfo = ref(false);
+const orderToPrint = ref<Order | null>(null);
+
+const printOrder = (order: Order) => {
+  orderToPrint.value = order;
+  setTimeout(() => {
+    window.print();
+    orderToPrint.value = null;
+  }, 300);
+};
+
+const fetchStoreInfo = async () => {
+  try {
+    const docSnap = await getDoc(doc(db, 'settings', 'store_info'));
+    if (docSnap.exists()) {
+      storeInfo.value = { ...storeInfo.value, ...docSnap.data() };
+    }
+  } catch (error) {
+    console.error('Error fetching store info:', error);
+  }
+};
+
+const saveStoreInfo = async () => {
+  if (!authStore.isAdmin) return;
+  if (isSavingStoreInfo.value) return;
+  
+  isSavingStoreInfo.value = true;
+  try {
+    await setDoc(doc(db, 'settings', 'store_info'), storeInfo.value);
+    toast.success('Đã lưu thông tin cửa hàng');
+  } catch (error) {
+    console.error('Error saving store info:', error);
+    handleFirestoreError(error, OperationType.WRITE, 'settings/store_info');
+    toast.error('Có lỗi xảy ra khi lưu thông tin');
+  } finally {
+    isSavingStoreInfo.value = false;
+  }
+};
 
 // Order Filtering & Search
 const orderFilter = ref<OrderStatus | 'all'>('all');
@@ -200,7 +250,8 @@ onMounted(async () => {
     fetchCategories(),
     fetchVouchers(),
     fetchStatsOrders(),
-    fetchUsers()
+    fetchUsers(),
+    fetchStoreInfo()
   ]);
 
   loading.value = false;
@@ -826,7 +877,8 @@ const seedData = async () => {
               { id: 'products', name: 'Sản phẩm', icon: Coffee },
               { id: 'categories', name: 'Danh mục', icon: Filter },
               { id: 'vouchers', name: 'Mã giảm giá', icon: Ticket },
-              { id: 'users', name: 'Người dùng', icon: Users }
+              { id: 'users', name: 'Người dùng', icon: Users },
+              { id: 'settings', name: 'Cửa hàng', icon: Store }
             ] : []),
           ]"
           :key="tab.id"
@@ -992,9 +1044,17 @@ const seedData = async () => {
                       {{ order.createdAt.toDate().toLocaleString('vi-VN') }}
                     </p>
                   </div>
-                  <div class="text-right">
-                    <p class="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">Tổng thanh toán</p>
-                    <p class="text-3xl font-black text-gray-900 tracking-tighter">{{ order.totalAmount.toLocaleString() }}đ</p>
+                  <div class="text-right flex flex-col items-end gap-2">
+                    <div>
+                      <p class="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">Tổng thanh toán</p>
+                      <p class="text-3xl font-black text-gray-900 tracking-tighter">{{ order.totalAmount.toLocaleString() }}đ</p>
+                    </div>
+                    <button 
+                      @click="printOrder(order)"
+                      class="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all"
+                    >
+                      <Printer :size="14" /> In đơn
+                    </button>
                   </div>
                 </div>
 
@@ -1289,6 +1349,71 @@ const seedData = async () => {
                 >
                   <ChevronRight :size="18" />
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div v-if="activeTab === 'settings' && authStore.isAdmin" class="space-y-10">
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">CỬA HÀNG</h2>
+            <button 
+              @click="saveStoreInfo"
+              :disabled="isSavingStoreInfo"
+              class="flex items-center gap-3 px-8 py-4 bg-orange-600 text-white rounded-3xl font-black text-sm uppercase tracking-widest hover:bg-orange-700 transition-all shadow-xl shadow-orange-600/30 disabled:opacity-50"
+            >
+              <div v-if="isSavingStoreInfo" class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <span v-else>Lưu thông tin</span>
+            </button>
+          </div>
+
+          <div class="bg-white p-10 rounded-[50px] shadow-sm border border-gray-100 space-y-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div class="space-y-3">
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Tên cửa hàng</label>
+                <input 
+                  v-model="storeInfo.name" 
+                  type="text" 
+                  class="w-full p-5 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
+                  placeholder="The Coffee House"
+                />
+              </div>
+              <div class="space-y-3">
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Số điện thoại</label>
+                <input 
+                  v-model="storeInfo.phone" 
+                  type="text" 
+                  class="w-full p-5 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
+                  placeholder="0123456789"
+                />
+              </div>
+              <div class="space-y-3 md:col-span-2">
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Địa chỉ</label>
+                <input 
+                  v-model="storeInfo.address" 
+                  type="text" 
+                  class="w-full p-5 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
+                  placeholder="123 Đường ABC, Quận XYZ, TP.HCM"
+                />
+              </div>
+              <div class="space-y-3">
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Facebook (Link)</label>
+                <input 
+                  v-model="storeInfo.facebook" 
+                  type="text" 
+                  class="w-full p-5 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
+                  placeholder="https://facebook.com/..."
+                />
+              </div>
+              <div class="space-y-3">
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Instagram (Link)</label>
+                <input 
+                  v-model="storeInfo.instagram" 
+                  type="text" 
+                  class="w-full p-5 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
+                  placeholder="https://instagram.com/..."
+                />
               </div>
             </div>
           </div>
@@ -1668,5 +1793,99 @@ const seedData = async () => {
         </div>
       </div>
     </transition>
+
+    <!-- Printable Order Receipt -->
+    <div id="print-area" v-if="orderToPrint" class="hidden print:block p-8 bg-white text-black w-full max-w-2xl mx-auto">
+      <div class="text-center mb-8 border-b border-gray-300 pb-6">
+        <h1 class="text-3xl font-black uppercase tracking-tighter mb-2">{{ storeInfo.name || 'THE COFFEE HOUSE' }}</h1>
+        <p class="text-sm text-gray-600 mb-1">{{ storeInfo.address || 'Địa chỉ cửa hàng' }}</p>
+        <p class="text-sm text-gray-600 mb-1">SĐT: {{ storeInfo.phone || '---' }}</p>
+        <div v-if="storeInfo.facebook || storeInfo.instagram" class="text-xs text-gray-500 mt-2">
+          <span v-if="storeInfo.facebook">FB: {{ storeInfo.facebook }}</span>
+          <span v-if="storeInfo.facebook && storeInfo.instagram"> | </span>
+          <span v-if="storeInfo.instagram">IG: {{ storeInfo.instagram }}</span>
+        </div>
+      </div>
+
+      <div class="mb-6 space-y-2">
+        <h2 class="text-xl font-black uppercase tracking-tight text-center mb-4">HÓA ĐƠN THANH TOÁN</h2>
+        <div class="flex justify-between text-sm">
+          <span class="font-bold">Mã đơn:</span>
+          <span>#{{ orderToPrint.id.slice(-8).toUpperCase() }}</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="font-bold">Ngày:</span>
+          <span>{{ orderToPrint.createdAt.toDate().toLocaleString('vi-VN') }}</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="font-bold">Khách hàng:</span>
+          <span>{{ orderToPrint.customerName }}</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="font-bold">SĐT:</span>
+          <span>{{ orderToPrint.customerPhone }}</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="font-bold">Địa chỉ:</span>
+          <span>{{ orderToPrint.address || 'Tại quán' }}</span>
+        </div>
+      </div>
+
+      <div class="border-t border-b border-gray-300 py-4 mb-6">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-gray-200">
+              <th class="text-left py-2">Món</th>
+              <th class="text-center py-2">SL</th>
+              <th class="text-right py-2">Thành tiền</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(item, i) in orderToPrint.items" :key="i" class="border-b border-gray-100 last:border-0">
+              <td class="py-3">
+                <div class="font-bold">{{ item.name }} ({{ item.size }})</div>
+                <div v-if="item.toppings && item.toppings.length > 0" class="text-xs text-gray-500">
+                  + {{ item.toppings.join(', ') }}
+                </div>
+              </td>
+              <td class="text-center py-3">{{ item.quantity }}</td>
+              <td class="text-right py-3">{{ (item.price * item.quantity).toLocaleString() }}đ</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="space-y-2 mb-8">
+        <div v-if="orderToPrint.discountAmount" class="flex justify-between text-sm">
+          <span>Giảm giá:</span>
+          <span>-{{ orderToPrint.discountAmount.toLocaleString() }}đ</span>
+        </div>
+        <div class="flex justify-between text-xl font-black uppercase tracking-tighter pt-2 border-t border-gray-300">
+          <span>Tổng cộng:</span>
+          <span>{{ orderToPrint.totalAmount.toLocaleString() }}đ</span>
+        </div>
+      </div>
+
+      <div class="text-center text-sm text-gray-500 italic">
+        Cảm ơn quý khách và hẹn gặp lại!
+      </div>
+    </div>
   </div>
 </template>
+
+<style scoped>
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #print-area, #print-area * {
+    visibility: visible;
+  }
+  #print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}
+</style>
