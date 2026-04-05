@@ -1,0 +1,5 @@
+{
+  "name": "The Coffee House Clone",
+  "description": "Ứng dụng đặt cà phê trực tuyến với đầy đủ tính năng chọn món, giỏ hàng, đặt hàng và quản trị đơn hàng.",
+  "requestFramePermissions": ["geolocation"]
+}
