@@ -24,7 +24,7 @@ import {
   Truck,
   Download
 } from 'lucide-vue-next';
-import { db, collection, query, orderBy, getDocs } from '../firebase';
+import { db, collection, query, orderBy, getDocs, doc, getDoc } from '../firebase';
 import type { Product, Category, CartItem } from '../types';
 import { useCartStore } from '../stores/cart';
 import { useAuthStore } from '../stores/auth';
@@ -70,13 +70,45 @@ const scrollToCategory = (slug: string) => {
 
 onMounted(async () => {
   try {
-    const [catSnapshot, prodSnapshot] = await Promise.all([
-      getDocs(query(collection(db, 'categories'), orderBy('order', 'asc'))),
-      getDocs(collection(db, 'products'))
-    ]);
-    
-    categories.value = catSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
-    products.value = prodSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+    // 1. Check cache info from server (1 read)
+    const cacheInfoDoc = await getDoc(doc(db, 'settings', 'cache_info'));
+    const serverCacheTime = cacheInfoDoc.exists() ? cacheInfoDoc.data().lastUpdated?.toMillis() || 0 : 0;
+
+    // 2. Read local cache
+    const localCacheStr = localStorage.getItem('menu_cache');
+    let useCache = false;
+
+    if (localCacheStr) {
+      try {
+        const localCache = JSON.parse(localCacheStr);
+        if (localCache.lastUpdated >= serverCacheTime) {
+          // Cache is valid
+          categories.value = localCache.categories;
+          products.value = localCache.products;
+          useCache = true;
+        }
+      } catch (e) {
+        console.error('Error parsing local cache', e);
+      }
+    }
+
+    // 3. Fetch from server if cache is invalid or missing
+    if (!useCache) {
+      const [catSnapshot, prodSnapshot] = await Promise.all([
+        getDocs(query(collection(db, 'categories'), orderBy('order', 'asc'))),
+        getDocs(collection(db, 'products'))
+      ]);
+      
+      categories.value = catSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
+      products.value = prodSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+
+      // Save to local storage
+      localStorage.setItem('menu_cache', JSON.stringify({
+        lastUpdated: serverCacheTime > 0 ? serverCacheTime : Date.now(),
+        categories: categories.value,
+        products: products.value
+      }));
+    }
 
     // Set initial active category
     const hasTrending = products.value.some(p => p.isAvailable && p.isTrending);

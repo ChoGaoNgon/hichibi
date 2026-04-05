@@ -25,7 +25,8 @@ import {
   BarChart3,
   Store,
   Printer,
-  RefreshCw
+  RefreshCw,
+  HardDrive
 } from 'lucide-vue-next';
 import { 
   db, 
@@ -45,7 +46,8 @@ import {
   limit,
   startAfter,
   OperationType,
-  handleFirestoreError
+  handleFirestoreError,
+  serverTimestamp
 } from '../firebase';
 import type { Order, Product, Category, OrderStatus } from '../types';
 import { useAuthStore } from '../stores/auth';
@@ -94,6 +96,61 @@ const isUpdatingUser = ref(false);
 const isSeeding = ref(false);
 const isUpdatingStatus = ref(false);
 const isRefreshing = ref(false);
+const isClearingCache = ref(false);
+
+const cacheConfig = ref({
+  autoUpdate: true,
+  lastUpdated: null as any
+});
+
+const fetchCacheConfig = async () => {
+  try {
+    const docSnap = await getDoc(doc(db, 'settings', 'cache_info'));
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      cacheConfig.value.autoUpdate = data.autoUpdate !== false; // default true
+      cacheConfig.value.lastUpdated = data.lastUpdated;
+    }
+  } catch (error) {
+    console.error('Error fetching cache config:', error);
+  }
+};
+
+const updateCacheMode = async (mode: boolean) => {
+  cacheConfig.value.autoUpdate = mode;
+  try {
+    await setDoc(doc(db, 'settings', 'cache_info'), { autoUpdate: mode }, { merge: true });
+    toast.success('Đã cập nhật cấu hình cache');
+  } catch (error) {
+    console.error('Error updating cache mode:', error);
+    toast.error('Có lỗi xảy ra khi cập nhật cấu hình cache');
+  }
+};
+
+const clearCustomerCache = async () => {
+  if (isClearingCache.value) return;
+  isClearingCache.value = true;
+  try {
+    const ts = serverTimestamp();
+    await setDoc(doc(db, 'settings', 'cache_info'), {
+      lastUpdated: ts,
+      autoUpdate: cacheConfig.value.autoUpdate
+    }, { merge: true });
+    cacheConfig.value.lastUpdated = new Date(); // Optimistic UI update
+    toast.success('Đã yêu cầu khách hàng tải lại dữ liệu mới');
+  } catch (error) {
+    console.error('Error clearing cache:', error);
+    toast.error('Có lỗi xảy ra khi xóa cache');
+  } finally {
+    isClearingCache.value = false;
+  }
+};
+
+const triggerAutoCacheUpdate = () => {
+  if (cacheConfig.value.autoUpdate) {
+    clearCustomerCache();
+  }
+};
 
 const refreshData = async () => {
   if (isRefreshing.value) return;
@@ -123,6 +180,9 @@ const refreshData = async () => {
         break;
       case 'settings':
         await fetchStoreInfo();
+        break;
+      case 'cache':
+        await fetchCacheConfig();
         break;
     }
     toast.success('Đã làm mới dữ liệu');
@@ -631,6 +691,7 @@ const saveProduct = async () => {
       toast.success('Đã thêm sản phẩm mới');
     }
     await fetchProducts();
+    triggerAutoCacheUpdate();
     closeProductModal();
   } catch (error) {
     console.error('Error saving product', error);
@@ -704,6 +765,7 @@ const saveCategory = async () => {
       toast.success('Đã thêm danh mục mới');
     }
     await fetchCategories();
+    triggerAutoCacheUpdate();
     closeCategoryModal();
   } catch (error) {
     console.error('Error saving category', error);
@@ -731,6 +793,7 @@ const executeDelete = async () => {
     if (itemToDelete.value.type === 'product') await fetchProducts();
     else await fetchCategories();
 
+    triggerAutoCacheUpdate();
     isDeleteConfirmOpen.value = false;
     itemToDelete.value = null;
   } catch (error) {
@@ -926,7 +989,8 @@ const seedData = async () => {
               { id: 'categories', name: 'Danh mục', icon: Filter },
               { id: 'vouchers', name: 'Mã giảm giá', icon: Ticket },
               { id: 'users', name: 'Người dùng', icon: Users },
-              { id: 'settings', name: 'Cửa hàng', icon: Store }
+              { id: 'settings', name: 'Cửa hàng', icon: Store },
+              { id: 'cache', name: 'Quản lý Cache', icon: HardDrive }
             ] : []),
           ]"
           :key="tab.id"
@@ -959,7 +1023,7 @@ const seedData = async () => {
       </div>
 
       <div v-else class="max-w-6xl mx-auto space-y-8">
-        <div class="flex justify-end">
+        <div class="flex flex-wrap justify-end gap-3">
           <button 
             @click="refreshData" 
             :disabled="isRefreshing"
@@ -1494,6 +1558,61 @@ const seedData = async () => {
                   class="w-full p-5 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
                   placeholder="https://instagram.com/..."
                 />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cache Management Tab -->
+        <div v-if="activeTab === 'cache' && authStore.isAdmin" class="space-y-10">
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">QUẢN LÝ CACHE</h2>
+            <button 
+              @click="clearCustomerCache" 
+              :disabled="isClearingCache"
+              class="flex items-center gap-3 px-8 py-4 bg-orange-600 text-white rounded-3xl font-black text-sm uppercase tracking-widest hover:bg-orange-700 transition-all shadow-xl shadow-orange-600/30 disabled:opacity-50"
+            >
+              <div v-if="isClearingCache" class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <span v-else>Cập nhật Cache Khách</span>
+            </button>
+          </div>
+
+          <div class="bg-white p-10 rounded-[50px] shadow-sm border border-gray-100 space-y-8">
+            <div class="space-y-6">
+              <div>
+                <h3 class="text-xl font-black text-gray-900 tracking-tight mb-2">Cấu hình cập nhật Cache</h3>
+                <p class="text-sm text-gray-500">Chọn cách thức cập nhật dữ liệu (sản phẩm, danh mục) cho phía khách hàng. Việc sử dụng cache giúp giảm thiểu số lượt đọc (reads) trên Firebase.</p>
+              </div>
+
+              <div class="space-y-4">
+                <label class="flex items-start gap-4 p-5 rounded-3xl border-2 cursor-pointer transition-all"
+                       :class="cacheConfig.autoUpdate ? 'border-orange-600 bg-orange-50/50' : 'border-gray-100 hover:border-gray-200'">
+                  <div class="mt-1">
+                    <input type="radio" :value="true" v-model="cacheConfig.autoUpdate" @change="updateCacheMode(true)" class="w-5 h-5 text-orange-600 border-gray-300 focus:ring-orange-600" />
+                  </div>
+                  <div>
+                    <p class="font-bold text-gray-900">Tự động (Khuyên dùng)</p>
+                    <p class="text-sm text-gray-500 mt-1">Mỗi khi bạn thêm, sửa, hoặc xóa Sản phẩm / Danh mục, hệ thống sẽ tự động yêu cầu khách hàng tải lại dữ liệu mới nhất.</p>
+                  </div>
+                </label>
+
+                <label class="flex items-start gap-4 p-5 rounded-3xl border-2 cursor-pointer transition-all"
+                       :class="!cacheConfig.autoUpdate ? 'border-orange-600 bg-orange-50/50' : 'border-gray-100 hover:border-gray-200'">
+                  <div class="mt-1">
+                    <input type="radio" :value="false" v-model="cacheConfig.autoUpdate" @change="updateCacheMode(false)" class="w-5 h-5 text-orange-600 border-gray-300 focus:ring-orange-600" />
+                  </div>
+                  <div>
+                    <p class="font-bold text-gray-900">Thủ công</p>
+                    <p class="text-sm text-gray-500 mt-1">Khách hàng sẽ luôn thấy dữ liệu cũ cho đến khi bạn chủ động bấm nút "Cập nhật Cache Khách" ở phía trên.</p>
+                  </div>
+                </label>
+              </div>
+
+              <div class="pt-6 border-t border-gray-100">
+                <p class="text-sm text-gray-500">
+                  <span class="font-bold text-gray-900">Lần cập nhật cache cuối:</span> 
+                  {{ cacheConfig.lastUpdated ? (cacheConfig.lastUpdated.toDate ? cacheConfig.lastUpdated.toDate().toLocaleString('vi-VN') : new Date(cacheConfig.lastUpdated).toLocaleString('vi-VN')) : 'Chưa có thông tin' }}
+                </p>
               </div>
             </div>
           </div>
