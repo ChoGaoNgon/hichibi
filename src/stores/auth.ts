@@ -12,7 +12,7 @@ export const useAuthStore = defineStore('auth', () => {
   const profile = ref<UserProfile | null>(null);
   const loading = ref(true);
 
-  const isAdmin = computed(() => profile.value?.role === 'admin' || user.value?.email === 'dang.nh.aprotrain@gmail.com');
+  const isAdmin = computed(() => profile.value?.role === 'admin');
   const isStaff = computed(() => profile.value?.role === 'staff' || isAdmin.value);
   const isCustomer = computed(() => profile.value?.role === 'customer');
 
@@ -29,7 +29,7 @@ export const useAuthStore = defineStore('auth', () => {
             uid: u.uid,
             email: u.email || '',
             displayName: u.displayName || '',
-            role: u.email === 'dang.nh.aprotrain@gmail.com' ? 'admin' : 'customer',
+            role: 'customer',
             createdAt: Timestamp.now(),
           };
           await setDoc(docRef, newProfile);

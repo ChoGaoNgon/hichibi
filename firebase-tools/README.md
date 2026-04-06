@@ -25,25 +25,18 @@ Bạn cần cài đặt **Node.js** trên máy tính của mình trước khi ch
    - `backup_users.json`: Chứa thông tin tài khoản đăng nhập.
    - `backup_firestore.json`: Chứa toàn bộ dữ liệu đơn hàng, sản phẩm, cài đặt...
 
-### Trên macOS/Linux:
-1. Mở Terminal trong thư mục này.
-2. Cấp quyền thực thi cho file: `chmod +x backup.sh`
-3. Chạy script: `./backup.sh`
-4. Làm theo hướng dẫn trên màn hình.
+### Trên macOS/Linux (Công cụ Thủ công - Đề xuất):
+Nếu các công cụ tự động gặp lỗi, hãy sử dụng bộ script thủ công (Single File) này. Chúng được thiết kế để chạy trực tiếp và dễ chỉnh sửa:
 
-## Bước 3: Chạy Restore (Phục hồi sang dự án mới)
-### Trên Windows:
-1. Xóa file `serviceAccountKey.json` cũ đi.
-2. Lặp lại **Bước 1** để lấy file `serviceAccountKey.json` của **dự án MỚI** và để vào thư mục này.
-3. Đảm bảo 2 file backup (`backup_users.json` và `backup_firestore.json`) vẫn đang ở trong thư mục.
-4. Click đúp vào file `restore.bat`.
-5. Nhập **Project ID** của dự án mới.
-6. Đợi script chạy xong. Toàn bộ dữ liệu đã được chuyển sang dự án mới!
+1. **Sao lưu (Backup):**
+   - Mở Terminal tại thư mục này.
+   - Cấp quyền: `chmod +x manual-backup.sh`
+   - Chạy: `./manual-backup.sh`
+   - Kết quả: Tạo ra file `auth_users.json` và `firestore_backup.json`.
 
-### Trên macOS/Linux:
-1. Xóa file `serviceAccountKey.json` cũ đi.
-2. Lặp lại **Bước 1** để lấy file `serviceAccountKey.json` của **dự án MỚI** và để vào thư mục này.
-3. Mở Terminal trong thư mục này.
-4. Cấp quyền thực thi cho file: `chmod +x restore.sh`
-5. Chạy script: `./restore.sh`
-6. Làm theo hướng dẫn trên màn hình.
+2. **Phục hồi (Restore):**
+   - Đảm bảo file `serviceAccountKey.json` là của dự án mới.
+   - Cấp quyền: `chmod +x manual-restore.sh`
+   - Chạy: `./manual-restore.sh`
+
+Các script này sử dụng Node.js inline và thư viện `firebase-admin` (đã được cài đặt sẵn trong dự án) để đọc/ghi từng bảng dữ liệu quan trọng (products, categories, vouchers, users, orders) một cách chính xác nhất, bao gồm cả việc xử lý các kiểu dữ liệu như Timestamp.

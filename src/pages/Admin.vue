@@ -1457,7 +1457,7 @@ const seedData = async () => {
                       <select 
                         :value="user.role"
                         @change="(e) => updateUserRole(user.id, (e.target as HTMLSelectElement).value as any)"
-                        :disabled="isUpdatingUser || user.email === 'dang.nh.aprotrain@gmail.com'"
+                        :disabled="isUpdatingUser"
                         class="p-3 bg-gray-50 border-none rounded-xl text-[10px] font-black uppercase tracking-widest focus:ring-2 focus:ring-orange-600 disabled:opacity-50"
                       >
                         <option value="customer">Customer</option>
