@@ -1236,6 +1236,10 @@ const seedData = async () => {
                       <p class="font-black text-gray-900 uppercase tracking-tight">{{ order.customerName }}</p>
                       <p class="text-sm text-gray-600 font-bold">{{ order.customerPhone }}</p>
                       <p class="text-sm text-gray-500 leading-relaxed">{{ order.address }}</p>
+                      <div v-if="order.note" class="mt-3 p-3 bg-orange-50 border border-orange-100 rounded-xl">
+                        <p class="text-[9px] text-orange-600 font-black uppercase tracking-widest mb-1">Ghi chú khách hàng:</p>
+                        <p class="text-xs text-gray-700 font-bold italic">"{{ order.note }}"</p>
+                      </div>
                       <div class="flex flex-wrap gap-2 mt-2">
                         <button
                           v-for="method in ['delivery', 'pickup', 'dine-in'] as DeliveryMethod[]"

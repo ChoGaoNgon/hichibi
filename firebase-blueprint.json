@@ -87,8 +87,9 @@
         },
         "totalAmount": { "type": "number" },
         "status": { "type": "string", "enum": ["pending", "processing", "delivering", "completed", "cancelled"] },
-        "deliveryMethod": { "type": "string", "enum": ["delivery", "pickup"] },
+        "deliveryMethod": { "type": "string", "enum": ["delivery", "pickup", "dine-in"] },
         "address": { "type": "string" },
+        "note": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },

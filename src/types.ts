@@ -62,6 +62,7 @@ export interface Order {
   status: OrderStatus;
   deliveryMethod: DeliveryMethod;
   address: string;
+  note?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   voucherCode?: string;

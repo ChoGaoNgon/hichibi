@@ -71,7 +71,8 @@ service cloud.firestore {
              data.status in ['pending', 'processing', 'delivering', 'completed', 'cancelled'] &&
              data.deliveryMethod in ['delivery', 'pickup', 'dine-in'] &&
              data.customerName is string &&
-             data.customerPhone is string;
+             data.customerPhone is string &&
+             (!('note' in data) || (data.note is string && data.note.size() < 1000));
     }
 
     function isValidVoucher(data) {

@@ -28,6 +28,7 @@ const router = useRouter();
 const customerName = ref(authStore.profile?.displayName || '');
 const customerPhone = ref(authStore.profile?.phoneNumber || '');
 const address = ref(authStore.profile?.address || '');
+const note = ref('');
 
 // Auto-fill when profile loads
 watch(() => authStore.profile, (newProfile) => {
@@ -139,6 +140,7 @@ const handleSubmit = async () => {
       status: 'pending' as OrderStatus,
       deliveryMethod: cartStore.deliveryMethod,
       address: cartStore.deliveryMethod === 'delivery' ? address.value : (cartStore.deliveryMethod === 'pickup' ? 'Nhận tại cửa hàng' : 'Uống tại quán'),
+      note: note.value,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
       ...(appliedVoucher.value ? {
@@ -322,6 +324,22 @@ const handleSubmit = async () => {
               <button @click="removeVoucher" class="p-2 text-gray-400 hover:text-red-600 transition-colors">
                 <X :size="16" />
               </button>
+            </div>
+          </div>
+
+          <!-- Customer Note -->
+          <div class="pt-6 border-t border-gray-50 space-y-4">
+            <h4 class="text-[10px] text-gray-400 font-black uppercase tracking-widest flex items-center gap-2">
+              <AlertCircle :size="14" class="text-[#C04D1E]" />
+              GHI CHÚ ĐƠN HÀNG
+            </h4>
+            <div class="relative">
+              <textarea
+                placeholder="Ghi chú cho cửa hàng (ví dụ: ít đường, không đá...)"
+                v-model="note"
+                rows="2"
+                class="w-full px-4 py-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-[#C04D1E] transition-all resize-none"
+              ></textarea>
             </div>
           </div>
 
