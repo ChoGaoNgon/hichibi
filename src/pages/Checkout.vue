@@ -117,9 +117,12 @@ const discountAmount = computed(() => {
 const finalTotal = computed(() => Math.max(0, cartStore.totalPrice - discountAmount.value));
 
 const handleSubmit = async () => {
-  if (!customerName.value || !customerPhone.value || (cartStore.deliveryMethod === 'delivery' && !address.value)) {
-    error.value = 'Vui lòng điền đầy đủ thông tin liên hệ và địa chỉ.';
-    return;
+  // Contact info is optional for tablet role
+  if (!authStore.isTablet) {
+    if (!customerName.value || !customerPhone.value || (cartStore.deliveryMethod === 'delivery' && !address.value)) {
+      error.value = 'Vui lòng điền đầy đủ thông tin liên hệ và địa chỉ.';
+      return;
+    }
   }
 
   isSubmitting.value = true;
@@ -129,8 +132,8 @@ const handleSubmit = async () => {
   try {
     const orderData: Omit<Order, 'id'> = {
       userId: authStore.user?.uid || 'guest',
-      customerName: customerName.value,
-      customerPhone: customerPhone.value,
+      customerName: customerName.value || (authStore.isTablet ? 'Tablet Order' : 'Guest'),
+      customerPhone: customerPhone.value || (authStore.isTablet ? 'N/A' : 'N/A'),
       items: cartStore.cart,
       totalAmount: finalTotal.value,
       status: 'pending' as OrderStatus,
@@ -157,6 +160,13 @@ const handleSubmit = async () => {
 
     orderSuccess.value = docRef.id;
     cartStore.clearCart();
+    
+    // Redirect to orders for tablet role
+    if (authStore.isTablet) {
+      setTimeout(() => {
+        router.push('/admin?tab=orders');
+      }, 1500);
+    }
   } catch (err) {
     handleFirestoreError(err, currentOperation.type, currentOperation.path);
     error.value = 'Có lỗi xảy ra khi đặt hàng. Vui lòng thử lại.';
@@ -222,7 +232,7 @@ const handleSubmit = async () => {
             <div class="relative">
               <User class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" :size="16" />
               <input
-                required
+                :required="!authStore.isTablet"
                 type="text"
                 placeholder="Họ và tên"
                 v-model="customerName"
@@ -232,7 +242,7 @@ const handleSubmit = async () => {
             <div class="relative">
               <Phone class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" :size="16" />
               <input
-                required
+                :required="!authStore.isTablet"
                 type="tel"
                 placeholder="Số điện thoại"
                 v-model="customerPhone"
@@ -242,7 +252,7 @@ const handleSubmit = async () => {
             <div v-if="cartStore.deliveryMethod === 'delivery'" class="relative">
               <MapPin class="absolute left-4 top-4 text-gray-400" :size="16" />
               <textarea
-                required
+                :required="!authStore.isTablet"
                 placeholder="Địa chỉ giao hàng"
                 v-model="address"
                 rows="2"

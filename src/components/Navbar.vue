@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { useCartStore } from '../stores/cart';
 import { useRoute } from 'vue-router';
@@ -12,7 +12,8 @@ import {
   X, 
   Coffee, 
   LayoutDashboard, 
-  ShoppingCart 
+  ShoppingCart,
+  Utensils
 } from 'lucide-vue-next';
 
 const authStore = useAuthStore();
@@ -20,10 +21,19 @@ const cartStore = useCartStore();
 const isMenuOpen = ref(false);
 const route = useRoute();
 
-const navLinks = [
-  { name: 'Thực đơn', path: '/', icon: Coffee },
-  { name: 'Giỏ hàng', path: '/cart', icon: ShoppingCart },
-];
+const navLinks = computed(() => {
+  const links = [
+    { name: 'Thực đơn', path: '/', icon: Coffee },
+    { name: 'Giỏ hàng', path: '/cart', icon: ShoppingCart },
+  ];
+  
+  // Hide menu for tablet role
+  if (authStore.isTablet) {
+    return links.filter(l => l.path !== '/');
+  }
+  
+  return links;
+});
 
 const toggleMenu = () => {
   isMenuOpen.value = !isMenuOpen.value;
@@ -60,7 +70,16 @@ const closeMenu = () => {
           </router-link>
           
           <router-link
-            v-if="authStore.isAdmin"
+            v-if="authStore.isAdmin || authStore.isTablet"
+            to="/tablet"
+            class="text-sm font-bold transition-colors hover:text-orange-600 uppercase tracking-wider"
+            :class="route.path === '/tablet' ? 'text-orange-600' : 'text-gray-600'"
+          >
+            Thực đơn Tablet
+          </router-link>
+          
+          <router-link
+            v-if="authStore.isStaff"
             to="/admin"
             class="text-sm font-bold transition-colors hover:text-orange-600 uppercase tracking-wider"
             :class="route.path.startsWith('/admin') ? 'text-orange-600' : 'text-gray-600'"
@@ -138,7 +157,19 @@ const closeMenu = () => {
           </router-link>
           
           <router-link
-            v-if="authStore.isAdmin"
+            v-if="authStore.isAdmin || authStore.isTablet"
+            to="/tablet"
+            @click="closeMenu"
+            class="flex items-center gap-4 text-xl font-black text-gray-900 p-4 rounded-2xl hover:bg-orange-50 transition-colors uppercase tracking-tight"
+          >
+            <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center text-orange-600">
+              <Utensils :size="24" />
+            </div>
+            Thực đơn Tablet
+          </router-link>
+
+          <router-link
+            v-if="authStore.isStaff"
             to="/admin"
             @click="closeMenu"
             class="flex items-center gap-4 text-xl font-black text-gray-900 p-4 rounded-2xl hover:bg-orange-50 transition-colors uppercase tracking-tight"

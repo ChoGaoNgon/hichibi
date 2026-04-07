@@ -6,7 +6,7 @@ export interface UserProfile {
   displayName: string;
   phoneNumber?: string;
   address?: string;
-  role: 'admin' | 'staff' | 'customer';
+  role: 'admin' | 'staff' | 'customer' | 'tablet';
   createdAt: Timestamp;
 }
 
@@ -50,7 +50,7 @@ export interface CartItem {
 }
 
 export type OrderStatus = 'pending' | 'processing' | 'delivering' | 'completed' | 'cancelled';
-export type DeliveryMethod = 'delivery' | 'pickup';
+export type DeliveryMethod = 'delivery' | 'pickup' | 'dine-in';
 
 export interface Order {
   id: string;

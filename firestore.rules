@@ -38,14 +38,14 @@ service cloud.firestore {
 
     function isStaff() {
       return isAuthenticated() &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'staff'];
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'staff', 'tablet'];
     }
 
     function isValidUser(data) {
       return data.keys().hasAll(['uid', 'email', 'role']) &&
              data.uid is string &&
              data.email is string &&
-             data.role in ['admin', 'staff', 'customer'];
+             data.role in ['admin', 'staff', 'customer', 'tablet'];
     }
 
     function isValidCategory(data) {

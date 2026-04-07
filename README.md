@@ -1,20 +1,101 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# The Coffee House Clone - Vue 3 + Firebase
 
-# Run and deploy your AI Studio app
+## 1. Giới thiệu hệ thống
+Hệ thống quản lý và đặt hàng cho quán cà phê (The Coffee House Clone) được xây dựng bằng Vue 3, Pinia, Tailwind CSS và Firebase. Hệ thống hỗ trợ đa nền tảng (Mobile, Tablet, Desktop) và đa vai trò người dùng.
 
-This contains everything you need to run your app locally.
+## 2. Phân quyền người dùng (RBAC)
+Hệ thống chia làm 4 vai trò chính:
 
-View your app in AI Studio: https://ai.studio/apps/1ac29742-d5c4-467b-b8d0-b685bbe7223f
+- **Admin (Quản trị viên)**:
+  - Toàn quyền quản lý hệ thống.
+  - Quản lý sản phẩm (thêm, sửa, xóa, ghi chú).
+  - Quản lý danh mục sản phẩm.
+  - Quản lý mã giảm giá (Vouchers) với các điều kiện áp dụng.
+  - Quản lý người dùng và phân quyền (Admin, Staff, Tablet, Customer).
+  - Xem báo cáo doanh thu, thống kê đơn hàng theo ngày/tuần/tháng.
+  - Cấu hình thông tin cửa hàng (Tên, địa chỉ, SĐT, mạng xã hội).
+  - Quản lý Cache hệ thống.
 
-## Run Locally
+- **Staff (Nhân viên)**:
+  - Quản lý đơn hàng: Tiếp nhận, thay đổi trạng thái xử lý (Chờ xử lý, Đang pha chế, Đang giao, Hoàn tất, Hủy).
+  - Thay đổi phương thức vận chuyển cho đơn hàng.
+  - In hóa đơn (Receipt) cho khách hàng.
+  - Xem Dashboard tổng quan về đơn hàng.
 
-**Prerequisites:**  Node.js
+- **Tablet (Máy tính bảng tại quầy)**:
+  - Giao diện thực đơn tối ưu cho tablet để nhân viên order nhanh tại quầy.
+  - Thông tin liên hệ khách hàng là **không bắt buộc**.
+  - Tự động điều hướng sang màn hình quản lý đơn hàng sau khi đặt để in hóa đơn ngay lập tức.
+  - Có quyền quản lý đơn hàng tương tự nhân viên để thực hiện in bill.
 
+- **Customer (Khách hàng)**:
+  - Xem thực đơn sinh động, tìm kiếm và lọc sản phẩm theo danh mục.
+  - Tùy chỉnh sản phẩm (Size, Toppings).
+  - Thêm vào giỏ hàng, áp dụng mã giảm giá.
+  - Đặt hàng với 3 phương thức: Giao hàng tận nơi, Đến lấy mang đi, Dùng tại quán.
+  - Xem lịch sử đơn hàng cá nhân và trạng thái đơn hàng thời gian thực.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## 3. Hướng dẫn cài đặt (Setup) từ đầu
+
+### Bước 1: Khởi tạo dự án Firebase
+1. Truy cập [Firebase Console](https://console.firebase.google.com/).
+2. Tạo một dự án mới (ví dụ: `the-coffee-house-clone`).
+3. Trong phần **Project Settings**, thêm một ứng dụng Web để lấy thông tin cấu hình.
+
+### Bước 2: Kích hoạt các dịch vụ Firebase
+1. **Authentication**:
+   - Vào mục Authentication -> Sign-in method.
+   - Bật phương thức đăng nhập **Google**.
+2. **Cloud Firestore**:
+   - Vào mục Firestore Database -> Create database.
+   - Chọn chế độ **Production mode**.
+   - Chọn khu vực (Region) gần bạn nhất (ví dụ: `asia-southeast1`).
+   - Database ID: Sử dụng `(default)` hoặc một ID tùy chỉnh (nếu dùng ID tùy chỉnh, cần khai báo trong config).
+
+### Bước 3: Cấu hình ứng dụng
+1. Tạo file `firebase-applet-config.json` ở thư mục gốc của dự án với nội dung lấy từ Firebase Console:
+```json
+{
+  "apiKey": "YOUR_API_KEY",
+  "authDomain": "YOUR_PROJECT_ID.firebaseapp.com",
+  "projectId": "YOUR_PROJECT_ID",
+  "storageBucket": "YOUR_PROJECT_ID.appspot.com",
+  "messagingSenderId": "YOUR_SENDER_ID",
+  "appId": "YOUR_APP_ID",
+  "firestoreDatabaseId": "(default)"
+}
+```
+
+### Bước 4: Triển khai Security Rules
+1. Copy nội dung từ file `firestore.rules` trong source code dự án.
+2. Dán vào tab **Rules** trong Cloud Firestore trên Firebase Console và nhấn **Publish**.
+
+### Bước 5: Cài đặt và Chạy ứng dụng
+1. Mở terminal tại thư mục dự án.
+2. Cài đặt các thư viện cần thiết:
+   ```bash
+   npm install
+   ```
+3. Khởi chạy ứng dụng ở chế độ phát triển:
+   ```bash
+   npm run dev
+   ```
+4. Ứng dụng sẽ chạy tại địa chỉ mặc định (thường là `http://localhost:3000`).
+
+### Bước 6: Khởi tạo dữ liệu mẫu (Seed Data)
+1. Đăng nhập vào ứng dụng bằng tài khoản Google của bạn.
+2. **Phân quyền Admin đầu tiên**:
+   - Do mặc định người dùng mới là `customer`, bạn cần vào Firebase Console -> Firestore.
+   - Tìm collection `users`, chọn document tương ứng với email của bạn.
+   - Thay đổi giá trị trường `role` từ `"customer"` thành `"admin"`.
+3. Quay lại ứng dụng và tải lại trang (F5).
+4. Bạn sẽ thấy menu **Quản trị** xuất hiện trên thanh điều hướng.
+5. Truy cập vào **Quản trị** -> Cuộn xuống cuối thanh menu bên trái -> Nhấn nút **Khởi tạo dữ liệu** (Seed Data).
+6. Hệ thống sẽ tự động tạo các danh mục (Cà phê, Trà, Đá xay...) và các sản phẩm mẫu để bạn bắt đầu sử dụng.
+
+---
+**Công nghệ sử dụng:**
+- Frontend: Vue 3 (Composition API), Vite, Pinia, Vue Router.
+- Styling: Tailwind CSS, Lucide Icons.
+- Backend: Firebase Auth, Cloud Firestore.
+- Notifications: Vue Sonner.

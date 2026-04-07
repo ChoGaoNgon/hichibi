@@ -11,9 +11,14 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<FirebaseUser | null>(null);
   const profile = ref<UserProfile | null>(null);
   const loading = ref(true);
+  let resolveReady: (value: unknown) => void;
+  const isReady = new Promise((resolve) => {
+    resolveReady = resolve;
+  });
 
   const isAdmin = computed(() => profile.value?.role === 'admin');
-  const isStaff = computed(() => profile.value?.role === 'staff' || isAdmin.value);
+  const isTablet = computed(() => profile.value?.role === 'tablet');
+  const isStaff = computed(() => profile.value?.role === 'staff' || isAdmin.value || isTablet.value);
   const isCustomer = computed(() => profile.value?.role === 'customer');
 
   const init = () => {
@@ -36,9 +41,11 @@ export const useAuthStore = defineStore('auth', () => {
           profile.value = newProfile;
         }
 
-        // Redirect admin to /admin if they just logged in
+        // Redirect based on role
         if (isAdmin.value && router.currentRoute.value.path === '/') {
           router.push('/admin');
+        } else if (isTablet.value && router.currentRoute.value.path === '/') {
+          router.push('/tablet');
         }
       } else {
         profile.value = null;
@@ -48,6 +55,7 @@ export const useAuthStore = defineStore('auth', () => {
         }
       }
       loading.value = false;
+      resolveReady(true);
     });
   };
 
@@ -89,5 +97,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   };
 
-  return { user, profile, loading, isAdmin, isStaff, isCustomer, init, login, logout, updateProfile };
+  return { user, profile, loading, isReady, isAdmin, isStaff, isTablet, isCustomer, init, login, logout, updateProfile };
 });

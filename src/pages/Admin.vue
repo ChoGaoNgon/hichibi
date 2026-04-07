@@ -95,6 +95,7 @@ const isSavingCategory = ref(false);
 const isUpdatingUser = ref(false);
 const isSeeding = ref(false);
 const isUpdatingStatus = ref(false);
+const isUpdatingDelivery = ref(false);
 const isRefreshing = ref(false);
 const isClearingCache = ref(false);
 
@@ -347,6 +348,10 @@ onUnmounted(() => {
 });
 
 onMounted(async () => {
+  if (router.currentRoute.value.query.tab) {
+    activeTab.value = router.currentRoute.value.query.tab as string;
+  }
+
   if (!authStore.isStaff) {
     router.push('/');
     return;
@@ -474,7 +479,7 @@ const fetchUsers = async () => {
   }
 };
 
-const updateUserRole = async (userId: string, newRole: 'admin' | 'staff' | 'customer') => {
+const updateUserRole = async (userId: string, newRole: 'admin' | 'staff' | 'customer' | 'tablet') => {
   if (!authStore.isAdmin) return;
   if (isUpdatingUser.value) return;
   
@@ -878,6 +883,32 @@ const executeStatusUpdate = async () => {
   }
 };
 
+const updateDeliveryMethod = async (orderId: string, method: DeliveryMethod) => {
+  if (isUpdatingDelivery.value) return;
+  
+  isUpdatingDelivery.value = true;
+  try {
+    await updateDoc(doc(db, 'orders', orderId), { 
+      deliveryMethod: method,
+      updatedAt: Timestamp.now()
+    });
+    
+    // Update local state
+    const orderIndex = orders.value.findIndex(o => o.id === orderId);
+    if (orderIndex !== -1) {
+      orders.value[orderIndex].deliveryMethod = method;
+    }
+
+    toast.success(`Đã cập nhật phương thức giao hàng thành ${method === 'delivery' ? 'Giao hàng' : method === 'pickup' ? 'Đến lấy' : 'Tại quán'}`);
+  } catch (error) {
+    console.error('Error updating delivery method', error);
+    handleFirestoreError(error, OperationType.UPDATE, `orders/${orderId}`);
+    toast.error('Có lỗi xảy ra khi cập nhật phương thức giao hàng');
+  } finally {
+    isUpdatingDelivery.value = false;
+  }
+};
+
 const getStatusColor = (status: OrderStatus) => {
   switch (status) {
     case 'pending': return 'bg-yellow-100 text-yellow-600';
@@ -1105,7 +1136,7 @@ const seedData = async () => {
                       <p class="font-black text-gray-900 text-sm uppercase tracking-tight">{{ order.customerName }}</p>
                       <p class="text-[10px] text-gray-400 font-bold">{{ order.customerPhone }}</p>
                     </td>
-                    <td class="py-6 px-4 font-black text-gray-900 tracking-tighter">{{ order.totalAmount.toLocaleString() }}đ</td>
+                    <td class="py-6 px-4 font-black text-gray-900 tracking-tighter">{{ (order.totalAmount || 0).toLocaleString() }}đ</td>
                     <td class="py-6 px-4">
                       <span :class="['px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest', getStatusColor(order.status)]">
                         {{ order.status }}
@@ -1184,7 +1215,7 @@ const seedData = async () => {
                   <div class="text-right flex flex-col items-end gap-2">
                     <div>
                       <p class="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">Tổng thanh toán</p>
-                      <p class="text-3xl font-black text-gray-900 tracking-tighter">{{ order.totalAmount.toLocaleString() }}đ</p>
+                      <p class="text-3xl font-black text-gray-900 tracking-tighter">{{ (order.totalAmount || 0).toLocaleString() }}đ</p>
                     </div>
                     <button 
                       v-if="order.status !== 'cancelled'"
@@ -1205,17 +1236,25 @@ const seedData = async () => {
                       <p class="font-black text-gray-900 uppercase tracking-tight">{{ order.customerName }}</p>
                       <p class="text-sm text-gray-600 font-bold">{{ order.customerPhone }}</p>
                       <p class="text-sm text-gray-500 leading-relaxed">{{ order.address }}</p>
-                      <p class="text-xs font-bold mt-2 inline-flex items-center gap-1.5 px-2 py-1 rounded-lg"
-                         :class="{
-                           'bg-blue-50 text-blue-600': order.deliveryMethod === 'delivery',
-                           'bg-purple-50 text-purple-600': order.deliveryMethod === 'pickup',
-                           'bg-green-50 text-green-600': order.deliveryMethod === 'dine-in'
-                         }">
-                        <Truck v-if="order.deliveryMethod === 'delivery'" :size="12" />
-                        <ShoppingBag v-else-if="order.deliveryMethod === 'pickup'" :size="12" />
-                        <Coffee v-else :size="12" />
-                        {{ order.deliveryMethod === 'delivery' ? 'Giao hàng tận nơi' : order.deliveryMethod === 'pickup' ? 'Đến lấy tại quán' : 'Dùng tại quán' }}
-                      </p>
+                      <div class="flex flex-wrap gap-2 mt-2">
+                        <button
+                          v-for="method in ['delivery', 'pickup', 'dine-in'] as DeliveryMethod[]"
+                          :key="method"
+                          @click="updateDeliveryMethod(order.id, method)"
+                          :disabled="isUpdatingDelivery"
+                          class="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5"
+                          :class="order.deliveryMethod === method ? 
+                            (method === 'delivery' ? 'bg-blue-100 text-blue-600' : 
+                             method === 'pickup' ? 'bg-purple-100 text-purple-600' : 
+                             'bg-green-100 text-green-600') : 
+                            'bg-white border border-gray-100 text-gray-400 hover:bg-gray-50'"
+                        >
+                          <Truck v-if="method === 'delivery'" :size="10" />
+                          <ShoppingBag v-else-if="method === 'pickup'" :size="10" />
+                          <Coffee v-else :size="10" />
+                          {{ method === 'delivery' ? 'Giao hàng' : method === 'pickup' ? 'Đến lấy' : 'Tại quán' }}
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <div class="space-y-4">
@@ -1462,6 +1501,7 @@ const seedData = async () => {
                       >
                         <option value="customer">Customer</option>
                         <option value="staff">Staff</option>
+                        <option value="tablet">Tablet</option>
                         <option value="admin">Admin</option>
                       </select>
                     </td>
@@ -2066,7 +2106,7 @@ const seedData = async () => {
         </div>
         <div class="flex justify-between text-[11px] font-black uppercase tracking-tighter pt-1 border-t border-gray-300">
           <span>Tổng cộng:</span>
-          <span>{{ orderToPrint.totalAmount.toLocaleString() }}đ</span>
+          <span>{{ (orderToPrint.totalAmount || 0).toLocaleString() }}đ</span>
         </div>
       </div>
 

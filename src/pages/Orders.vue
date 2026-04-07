@@ -240,7 +240,7 @@ const formatDate = (timestamp: Timestamp) => {
           <div class="p-6 bg-gray-50 flex items-center justify-between">
             <div>
               <p class="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-0.5">TỔNG CỘNG</p>
-              <p class="text-lg font-black text-[#C04D1E] tracking-tighter">{{ order.totalAmount.toLocaleString() }}đ</p>
+              <p class="text-lg font-black text-[#C04D1E] tracking-tighter">{{ (order.totalAmount || 0).toLocaleString() }}đ</p>
             </div>
             <div class="flex gap-2">
               <button 
@@ -332,11 +332,11 @@ const formatDate = (timestamp: Timestamp) => {
           <div class="space-y-2 pt-4 border-t border-gray-100">
             <div v-if="selectedOrder.discountAmount" class="flex justify-between items-center">
               <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Giảm giá</span>
-              <span class="text-xs font-black text-green-600">-{{ selectedOrder.discountAmount.toLocaleString() }}đ</span>
+              <span class="text-xs font-black text-green-600">-{{ (selectedOrder.discountAmount || 0).toLocaleString() }}đ</span>
             </div>
             <div class="flex justify-between items-center pt-2">
               <span class="text-sm font-black text-gray-900 uppercase tracking-widest">Tổng cộng</span>
-              <span class="text-xl font-black text-[#C04D1E] tracking-tighter">{{ selectedOrder.totalAmount.toLocaleString() }}đ</span>
+              <span class="text-xl font-black text-[#C04D1E] tracking-tighter">{{ (selectedOrder.totalAmount || 0).toLocaleString() }}đ</span>
             </div>
           </div>
           

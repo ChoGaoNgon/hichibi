@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import Menu from '../pages/Menu.vue';
+import TabletMenu from '../pages/TabletMenu.vue';
 import Cart from '../pages/Cart.vue';
 import Checkout from '../pages/Checkout.vue';
 import Admin from '../pages/Admin.vue';
@@ -12,6 +13,7 @@ const router = createRouter({
   routes: [
     { path: '/', component: Menu },
     { path: '/menu', redirect: '/' },
+    { path: '/tablet', component: TabletMenu, meta: { requiresTablet: true } },
     { path: '/cart', component: Cart },
     { path: '/checkout', component: Checkout },
     { path: '/profile', component: Profile },
@@ -34,7 +36,13 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
+  
+  // Wait for auth to initialize
+  await authStore.isReady;
+  
   if (to.meta.requiresAdmin && !authStore.isStaff) {
+    next('/');
+  } else if (to.meta.requiresTablet && !authStore.isTablet && !authStore.isAdmin) {
     next('/');
   } else {
     next();

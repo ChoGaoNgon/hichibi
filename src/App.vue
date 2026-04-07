@@ -20,7 +20,7 @@ onMounted(() => {
     <div class="w-12 h-12 border-4 border-orange-600 border-t-transparent rounded-full animate-spin"></div>
   </div>
   <div v-else class="min-h-screen bg-white flex flex-col font-sans print:bg-white print:block">
-    <Navbar v-if="route.path !== '/' && route.path !== '/checkout' && route.path !== '/cart'" class="print:hidden" />
+    <Navbar v-if="route.path !== '/' && route.path !== '/checkout' && route.path !== '/cart' && route.path !== '/tablet'" class="print:hidden" />
     <main class="flex-grow print:m-0 print:p-0">
       <router-view v-slot="{ Component }">
         <transition name="fade" mode="out-in">
@@ -28,7 +28,7 @@ onMounted(() => {
         </transition>
       </router-view>
     </main>
-    <Footer v-if="route.path !== '/' && route.path !== '/checkout' && route.path !== '/cart'" class="print:hidden" />
+    <Footer v-if="route.path !== '/' && route.path !== '/checkout' && route.path !== '/cart' && route.path !== '/tablet'" class="print:hidden" />
   </div>
 </template>
 
