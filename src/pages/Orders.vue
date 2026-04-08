@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { 
   ArrowLeft, 
@@ -15,7 +15,7 @@ import {
 } from 'lucide-vue-next';
 import { useAuthStore } from '../stores/auth';
 import { useCartStore } from '../stores/cart';
-import { db, collection, query, where, orderBy, getDocs, Timestamp, doc, updateDoc, handleFirestoreError, OperationType } from '../firebase';
+import { db, collection, query, where, orderBy, onSnapshot, Timestamp, doc, updateDoc, handleFirestoreError, OperationType } from '../firebase';
 import type { Order, OrderStatus } from '../types';
 import { toast } from 'vue-sonner';
 
@@ -28,6 +28,7 @@ const loading = ref(true);
 const selectedOrder = ref<Order | null>(null);
 const orderToCancel = ref<Order | null>(null);
 const isCancelling = ref(false);
+let unsubscribe: (() => void) | null = null;
 
 const openDetails = (order: Order) => {
   selectedOrder.value = order;
@@ -57,15 +58,6 @@ const proceedCancel = async () => {
       updatedAt: Timestamp.now()
     });
     
-    // Update local state
-    const index = orders.value.findIndex(o => o.id === order.id);
-    if (index !== -1) {
-      orders.value[index].status = 'cancelled';
-    }
-    if (selectedOrder.value && selectedOrder.value.id === order.id) {
-      selectedOrder.value.status = 'cancelled';
-    }
-    
     toast.success('Đã hủy đơn hàng thành công');
     closeDetails();
   } catch (error) {
@@ -77,27 +69,69 @@ const proceedCancel = async () => {
   }
 };
 
-const fetchOrders = async () => {
+const setupRealtimeOrders = () => {
   if (!authStore.user) return;
   
   loading.value = true;
-  try {
-    const q = query(
-      collection(db, 'orders'),
-      where('userId', '==', authStore.user.uid),
-      orderBy('createdAt', 'desc')
-    );
-    const snapshot = await getDocs(q);
-    orders.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
-  } catch (error) {
-    console.error('Error fetching orders', error);
-    toast.error('Có lỗi xảy ra khi tải lịch sử đơn hàng');
-  } finally {
+  const q = query(
+    collection(db, 'orders'),
+    where('userId', '==', authStore.user.uid),
+    orderBy('createdAt', 'desc')
+  );
+
+  unsubscribe = onSnapshot(q, (snapshot) => {
+    const newOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
+    
+    // Check for status changes to show toast
+    if (!loading.value && orders.value.length > 0) {
+      newOrders.forEach(newOrder => {
+        const oldOrder = orders.value.find(o => o.id === newOrder.id);
+        if (oldOrder && oldOrder.status !== newOrder.status) {
+          showStatusToast(newOrder);
+          
+          // Update selected order if it's the one that changed
+          if (selectedOrder.value && selectedOrder.value.id === newOrder.id) {
+            selectedOrder.value = { ...newOrder };
+          }
+        }
+      });
+    }
+
+    orders.value = newOrders;
     loading.value = false;
-  }
+  }, (error) => {
+    console.error('Error listening to orders', error);
+    toast.error('Có lỗi xảy ra khi tải lịch sử đơn hàng');
+    loading.value = false;
+  });
 };
 
-onMounted(fetchOrders);
+const showStatusToast = (order: Order) => {
+  const statusLabels: Record<OrderStatus, string> = {
+    'pending': 'đang chờ xác nhận',
+    'processing': 'đang được xử lý',
+    'delivering': 'đang được giao đi',
+    'completed': 'đã hoàn thành',
+    'cancelled': 'đã bị hủy'
+  };
+
+  const label = statusLabels[order.status] || order.status;
+  
+  toast.info(`Đơn hàng #${order.id.slice(-6).toUpperCase()} ${label}`, {
+    description: 'Trạng thái đơn hàng của bạn vừa được cập nhật.',
+    duration: 5000,
+  });
+};
+
+onMounted(() => {
+  setupRealtimeOrders();
+});
+
+onUnmounted(() => {
+  if (unsubscribe) {
+    unsubscribe();
+  }
+});
 
 const getStatusColor = (status: OrderStatus) => {
   switch (status) {
@@ -214,9 +248,13 @@ const formatDate = (timestamp: Timestamp) => {
               <p class="font-black text-gray-900 uppercase tracking-tight">#{{ order.id.slice(-6).toUpperCase() }}</p>
               <p class="text-[10px] text-gray-400 font-bold tracking-tight">{{ formatDate(order.createdAt) }}</p>
             </div>
-            <div :class="['px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5', getStatusColor(order.status)]">
+            <div :class="['px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-colors duration-500', getStatusColor(order.status)]">
               <component :is="getStatusIcon(order.status)" :size="12" />
-              {{ getStatusLabel(order.status) }}
+              <transition name="fade-status" mode="out-in">
+                <span :key="order.status">
+                  {{ getStatusLabel(order.status) }}
+                </span>
+              </transition>
             </div>
           </div>
 
@@ -283,9 +321,13 @@ const formatDate = (timestamp: Timestamp) => {
             </div>
             <div class="flex justify-between items-center">
               <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Trạng thái</span>
-              <div :class="['px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1', getStatusColor(selectedOrder.status)]">
+              <div :class="['px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1 transition-colors duration-500', getStatusColor(selectedOrder.status)]">
                 <component :is="getStatusIcon(selectedOrder.status)" :size="12" />
-                {{ getStatusLabel(selectedOrder.status) }}
+                <transition name="fade-status" mode="out-in">
+                  <span :key="selectedOrder.status">
+                    {{ getStatusLabel(selectedOrder.status) }}
+                  </span>
+                </transition>
               </div>
             </div>
             <div class="flex justify-between items-center">
@@ -382,6 +424,18 @@ const formatDate = (timestamp: Timestamp) => {
 </template>
 
 <style scoped>
+.fade-status-enter-active,
+.fade-status-leave-active {
+  transition: all 0.3s ease;
+}
+.fade-status-enter-from {
+  opacity: 0;
+  transform: translateY(4px);
+}
+.fade-status-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }

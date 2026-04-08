@@ -1,7 +1,7 @@
-# The Coffee House Clone - Vue 3 + Firebase
+# The Hichibi Coffee House - Vue 3 + Firebase
 
 ## 1. Giới thiệu hệ thống
-Hệ thống quản lý và đặt hàng cho quán cà phê (The Coffee House Clone) được xây dựng bằng Vue 3, Pinia, Tailwind CSS và Firebase. Hệ thống hỗ trợ đa nền tảng (Mobile, Tablet, Desktop) và đa vai trò người dùng.
+Hệ thống quản lý và đặt hàng cho quán cà phê **The Hichibi Coffee House** được xây dựng bằng Vue 3, Pinia, Tailwind CSS và Firebase. Hệ thống hỗ trợ đa nền tảng (Mobile, Tablet, Desktop) và đa vai trò người dùng, tích hợp thông báo thời gian thực qua Telegram.
 
 ## 2. Phân quyền người dùng (RBAC)
 Hệ thống chia làm 4 vai trò chính:
@@ -14,12 +14,14 @@ Hệ thống chia làm 4 vai trò chính:
   - Quản lý người dùng và phân quyền (Admin, Staff, Tablet, Customer).
   - Xem báo cáo doanh thu, thống kê đơn hàng theo ngày/tuần/tháng.
   - Cấu hình thông tin cửa hàng (Tên, địa chỉ, SĐT, mạng xã hội).
-  - Quản lý Cache hệ thống.
+  - Cấu hình **Telegram Bot** để nhận thông báo đơn hàng mới.
+  - Quản lý Cache hệ thống và Khởi tạo dữ liệu mẫu (Seed Data).
 
 - **Staff (Nhân viên)**:
   - Quản lý đơn hàng: Tiếp nhận, thay đổi trạng thái xử lý (Chờ xử lý, Đang pha chế, Đang giao, Hoàn tất, Hủy).
   - Thay đổi phương thức vận chuyển cho đơn hàng.
-  - In hóa đơn (Receipt) cho khách hàng.
+  - In hóa đơn (Receipt) cho khách hàng chuyên nghiệp.
+  - Nhận thông báo tức thời qua Telegram khi có đơn hàng mới.
   - Xem Dashboard tổng quan về đơn hàng.
 
 - **Tablet (Máy tính bảng tại quầy)**:
@@ -96,6 +98,6 @@ Hệ thống chia làm 4 vai trò chính:
 ---
 **Công nghệ sử dụng:**
 - Frontend: Vue 3 (Composition API), Vite, Pinia, Vue Router.
-- Styling: Tailwind CSS, Lucide Icons.
+- Styling: Tailwind CSS, Lucide Icons, Motion (Vue Transitions).
 - Backend: Firebase Auth, Cloud Firestore.
-- Notifications: Vue Sonner.
+- Notifications: Vue Sonner, Telegram Bot API.

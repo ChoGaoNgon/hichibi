@@ -1,16 +1,86 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from './stores/auth';
-import { Toaster } from 'vue-sonner';
+import { Toaster, toast } from 'vue-sonner';
 import Navbar from './components/Navbar.vue';
 import Footer from './components/Footer.vue';
+import { db, collection, query, where, onSnapshot } from './firebase';
+import type { Order, OrderStatus } from './types';
 
 const authStore = useAuthStore();
 const route = useRoute();
+let unsubscribe: (() => void) | null = null;
+const knownOrderStatuses = ref<Record<string, OrderStatus>>({});
+const isInitialLoad = ref(true);
+
+const setupOrderListener = (userId: string) => {
+  if (unsubscribe) unsubscribe();
+
+  const q = query(
+    collection(db, 'orders'),
+    where('userId', '==', userId)
+  );
+
+  unsubscribe = onSnapshot(q, (snapshot) => {
+    snapshot.docs.forEach(doc => {
+      const orderData = doc.data() as Order;
+      const orderId = doc.id;
+      const currentStatus = orderData.status;
+
+      if (!isInitialLoad.value) {
+        const previousStatus = knownOrderStatuses.value[orderId];
+        if (previousStatus && previousStatus !== currentStatus) {
+          showStatusToast(orderId, currentStatus);
+        }
+      }
+      
+      knownOrderStatuses.value[orderId] = currentStatus;
+    });
+    
+    isInitialLoad.value = false;
+  });
+};
+
+const showStatusToast = (orderId: string, status: OrderStatus) => {
+  // Don't show toast if user is already on the Orders page (it has its own listener)
+  if (route.path === '/orders') return;
+
+  const statusLabels: Record<OrderStatus, string> = {
+    'pending': 'đang chờ xác nhận',
+    'processing': 'đang được xử lý',
+    'delivering': 'đang được giao đi',
+    'completed': 'đã hoàn thành',
+    'cancelled': 'đã bị hủy'
+  };
+
+  const label = statusLabels[status] || status;
+  
+  toast.info(`Đơn hàng #${orderId.slice(-6).toUpperCase()} ${label}`, {
+    description: 'Trạng thái đơn hàng của bạn vừa được cập nhật.',
+    duration: 5000,
+  });
+};
+
+watch(() => authStore.user?.uid, (newUid) => {
+  if (newUid) {
+    isInitialLoad.value = true;
+    setupOrderListener(newUid);
+  } else {
+    if (unsubscribe) {
+      unsubscribe();
+      unsubscribe = null;
+    }
+    knownOrderStatuses.value = {};
+  }
+}, { immediate: true });
 
 onMounted(() => {
   authStore.init();
+});
+
+onUnmounted(() => {
+  if (unsubscribe) unsubscribe();
 });
 </script>
 
