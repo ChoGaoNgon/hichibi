@@ -374,7 +374,7 @@ onMounted(async () => {
 });
 
 // Dashboard Statistics
-const statsRange = ref<'day' | 'week' | 'month'>('day');
+const statsRange = ref<'day'>('day');
 const statsOrders = ref<Order[]>([]);
 const isLoadingStats = ref(false);
 
@@ -382,17 +382,8 @@ const fetchStatsOrders = async () => {
   isLoadingStats.value = true;
   try {
     const now = new Date();
-    let start = new Date();
-    
-    if (statsRange.value === 'day') {
-      start.setHours(0, 0, 0, 0);
-    } else if (statsRange.value === 'week') {
-      start.setDate(now.getDate() - 7);
-      start.setHours(0, 0, 0, 0);
-    } else if (statsRange.value === 'month') {
-      start.setMonth(now.getMonth() - 1);
-      start.setHours(0, 0, 0, 0);
-    }
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
     
     const q = query(
       collection(db, 'orders'),
@@ -1080,11 +1071,7 @@ const seedData = async () => {
             <div class="flex flex-wrap items-center gap-4">
               <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl border border-gray-100 shadow-sm">
                 <Calendar :size="14" class="text-gray-400" />
-                <select v-model="statsRange" class="text-[10px] font-black uppercase tracking-widest bg-transparent border-none focus:ring-0 cursor-pointer">
-                  <option value="day">Hôm nay</option>
-                  <option value="week">7 ngày qua</option>
-                  <option value="month">30 ngày qua</option>
-                </select>
+                <span class="text-[10px] font-black uppercase tracking-widest text-orange-600">Hôm nay</span>
               </div>
             </div>
           </div>
@@ -1095,7 +1082,7 @@ const seedData = async () => {
                 <TrendingUp :size="32" />
               </div>
               <div>
-                <p class="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1">Doanh thu (Theo lọc)</p>
+                <p class="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1">Doanh thu hôm nay</p>
                 <p class="text-4xl font-black text-gray-900 tracking-tighter">{{ totalRevenueInRange.toLocaleString() }}đ</p>
               </div>
             </div>
@@ -1104,7 +1091,7 @@ const seedData = async () => {
                 <ShoppingBag :size="32" />
               </div>
               <div>
-                <p class="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1">Đơn hàng (Theo lọc)</p>
+                <p class="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1">Đơn hàng hôm nay</p>
                 <p class="text-4xl font-black text-gray-900 tracking-tighter">{{ totalOrdersInRange }}</p>
               </div>
             </div>
