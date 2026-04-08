@@ -355,11 +355,19 @@ const selectDeliveryMethod = (method: 'delivery' | 'pickup' | 'dine-in') => {
 
     <!-- Floating Buttons -->
     <div class="fixed bottom-24 right-6 flex flex-col gap-4 z-50">
-      <a href="tel:19001833" class="w-14 h-14 bg-green-500 text-white rounded-full flex items-center justify-center shadow-2xl shadow-green-500/40">
+      <a href="tel:0978534865" class="w-14 h-14 bg-green-500 text-white rounded-full flex items-center justify-center shadow-2xl shadow-green-500/40">
         <Phone :size="24" />
       </a>
       <button class="w-14 h-14 bg-[#C04D1E] text-white rounded-full flex items-center justify-center shadow-2xl shadow-[#C04D1E]/40">
-        <MessageSquare :size="24" />
+        <a
+    href="https://m.me/util.module"
+    target="_blank"
+    rel="noopener"
+    class="cursor-pointer"
+  >
+     <MessageSquare :size="24" />
+  </a>
+       
       </button>
       <router-link to="/cart" class="w-14 h-14 bg-[#C04D1E] text-white rounded-full flex items-center justify-center shadow-2xl shadow-[#C04D1E]/40 relative">
         <ShoppingBag :size="24" />
