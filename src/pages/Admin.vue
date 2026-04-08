@@ -201,7 +201,9 @@ const storeInfo = ref({
   address: '',
   phone: '',
   facebook: '',
-  instagram: ''
+  instagram: '',
+  telegramBotToken: '',
+  telegramChatId: ''
 });
 const isSavingStoreInfo = ref(false);
 const orderToPrint = ref<Order | null>(null);
@@ -307,9 +309,10 @@ const filteredOrders = computed(() => {
   
   const search = orderSearch.value.toLowerCase().trim();
   return result.filter(o => {
+    const idMatch = o.id.toLowerCase().includes(search);
     const nameMatch = search.length >= 3 && o.customerName.toLowerCase().includes(search);
     const phoneMatch = search.length >= 4 && o.customerPhone.includes(search);
-    return nameMatch || phoneMatch;
+    return idMatch || nameMatch || phoneMatch;
   });
 });
 
@@ -1163,7 +1166,7 @@ const seedData = async () => {
                 <input 
                   v-model="orderSearch" 
                   type="text" 
-                  placeholder="Tìm tên, SĐT..." 
+                  placeholder="Tìm mã đơn, tên, SĐT..." 
                   class="text-xs font-bold bg-transparent border-none focus:ring-0 w-full md:w-48"
                 />
               </div>
@@ -1608,6 +1611,36 @@ const seedData = async () => {
                   placeholder="https://instagram.com/..."
                 />
               </div>
+            </div>
+
+            <div class="pt-8 border-t border-gray-100">
+              <h3 class="text-xl font-black text-gray-900 uppercase tracking-tighter mb-6 flex items-center gap-3">
+                <div class="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
+                  <RefreshCw :size="16" />
+                </div>
+                Cấu hình Telegram Notification
+              </h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="space-y-3">
+                  <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Telegram Bot Token</label>
+                  <input 
+                    v-model="storeInfo.telegramBotToken" 
+                    type="password" 
+                    class="w-full p-5 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
+                    placeholder="8761492398:AAEy..."
+                  />
+                </div>
+                <div class="space-y-3">
+                  <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Telegram Chat ID</label>
+                  <input 
+                    v-model="storeInfo.telegramChatId" 
+                    type="text" 
+                    class="w-full p-5 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
+                    placeholder="-5100597407"
+                  />
+                </div>
+              </div>
+              <p class="mt-4 text-xs text-gray-500 italic">* Thông tin này dùng để gửi thông báo đơn hàng mới qua Telegram và sẽ không hiển thị trên hóa đơn in.</p>
             </div>
           </div>
         </div>
