@@ -15,6 +15,7 @@ Hệ thống chia làm 4 vai trò chính:
   - Xem báo cáo doanh thu, thống kê đơn hàng theo ngày/tuần/tháng.
   - Cấu hình thông tin cửa hàng (Tên, địa chỉ, SĐT, mạng xã hội).
   - Cấu hình **Telegram Bot** để nhận thông báo đơn hàng mới.
+  - Cấu hình **Google Sheets Sync** để tự động đồng bộ đơn hàng sang bảng tính.
   - Quản lý Cache hệ thống và Khởi tạo dữ liệu mẫu (Seed Data).
 
 - **Staff (Nhân viên)**:

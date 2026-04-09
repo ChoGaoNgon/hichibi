@@ -21,6 +21,7 @@ import { useAuthStore } from '../stores/auth';
 import { db, collection, addDoc, Timestamp, OperationType, handleFirestoreError, getDocs, query, where, doc, updateDoc, increment } from '../firebase';
 import type { Order, OrderStatus, Voucher } from '../types';
 import { sendTelegramNotification } from '../services/telegramService';
+import { syncOrderToGoogleSheets } from '../services/googleSheetsService';
 
 const cartStore = useCartStore();
 const authStore = useAuthStore();
@@ -166,6 +167,9 @@ const handleSubmit = async () => {
 
     // Send Telegram Notification
     sendTelegramNotification({ id: docRef.id, ...orderData });
+    
+    // Sync to Google Sheets
+    syncOrderToGoogleSheets({ id: docRef.id, ...orderData });
     
     // Redirect to orders for tablet role
     if (authStore.isTablet) {

@@ -49,10 +49,11 @@ import {
   handleFirestoreError,
   serverTimestamp
 } from '../firebase';
-import type { Order, Product, Category, OrderStatus } from '../types';
+import type { Order, Product, Category, OrderStatus, DeliveryMethod } from '../types';
 import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
+import { syncOrderToGoogleSheets } from '../services/googleSheetsService';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -203,7 +204,8 @@ const storeInfo = ref({
   facebook: '',
   instagram: '',
   telegramBotToken: '',
-  telegramChatId: ''
+  telegramChatId: '',
+  googleSheetsHookUrl: ''
 });
 const isSavingStoreInfo = ref(false);
 const orderToPrint = ref<Order | null>(null);
@@ -862,6 +864,9 @@ const executeStatusUpdate = async () => {
 
     toast.success(`Đã cập nhật trạng thái đơn hàng thành ${status}`);
     
+    // Sync to Google Sheets on every status change
+    syncOrderToGoogleSheets(orders.value[orderIndex]);
+
     // Refetch stats if needed
     if (status === 'completed' || orders.value.find(o => o.id === orderId)?.status === 'completed') {
       await fetchStatsOrders();
@@ -1597,6 +1602,16 @@ const seedData = async () => {
                   class="w-full p-5 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
                   placeholder="https://instagram.com/..."
                 />
+              </div>
+              <div class="space-y-3 md:col-span-2">
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Google Sheets Web App URL (Hook)</label>
+                <input 
+                  v-model="storeInfo.googleSheetsHookUrl" 
+                  type="text" 
+                  class="w-full p-5 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
+                  placeholder="https://script.google.com/macros/s/.../exec"
+                />
+                <p class="text-[9px] text-gray-400 font-bold italic">Dùng để đồng bộ đơn hàng sang Google Sheets mà không tốn quota Cloud Functions.</p>
               </div>
             </div>
 

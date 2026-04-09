@@ -43,7 +43,11 @@ Luồng này xử lý từ khi người dùng có sản phẩm trong giỏ hàng
     *   Sau khi lưu đơn hàng thành công, hàm `sendTelegramNotification(order)` được gọi.
     *   Hệ thống lấy `telegramBotToken` và `telegramChatId` từ collection `settings/store_info`.
     *   Gửi request `POST` tới Telegram Bot API để thông báo cho nhân viên.
-6.  **Hoàn tất**: Xóa giỏ hàng (`cartStore.clearCart()`) và hiển thị màn hình thành công.
+6.  **Đồng bộ dữ liệu (Google Sheets Sync)**:
+    *   Hệ thống gọi `syncOrderToGoogleSheets(order)`.
+    *   Gửi request `POST` tới Google Apps Script Web App URL (được cấu hình trong settings).
+    *   Dữ liệu được ghi trực tiếp vào Google Sheet để lưu trữ lâu dài và làm báo cáo mà không tốn quota Read của Firestore.
+7.  **Hoàn tất**: Xóa giỏ hàng (`cartStore.clearCart()`) và hiển thị màn hình thành công.
 
 ---
 
