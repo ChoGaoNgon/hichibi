@@ -14,14 +14,18 @@ import {
   Truck,
   Utensils,
   X,
-  AlertTriangle
+  AlertTriangle,
+  Check
 } from 'lucide-vue-next';
 import { useCartStore } from '../stores/cart';
+import { useAuthStore } from '../stores/auth';
 
 const cartStore = useCartStore();
+const authStore = useAuthStore();
 const router = useRouter();
 
 const isConfirmModalOpen = ref(false);
+const isDeliveryPopupOpen = ref(false);
 const itemIndexToRemove = ref<number | null>(null);
 
 const requestRemove = (index: number) => {
@@ -43,6 +47,15 @@ const handleUpdateQuantity = (index: number, delta: number) => {
     requestRemove(index);
   } else {
     cartStore.updateQuantity(index, delta);
+  }
+};
+
+const selectDeliveryMethod = async (method: 'delivery' | 'pickup' | 'dine-in') => {
+  cartStore.setDeliveryMethod(method);
+  isDeliveryPopupOpen.value = false;
+  
+  if (method === 'delivery') {
+    await authStore.shareLocation();
   }
 };
 </script>
@@ -89,7 +102,7 @@ const handleUpdateQuantity = (index: number, delta: number) => {
               {{ cartStore.deliveryMethod === 'delivery' ? 'Giao hàng tận nơi' : (cartStore.deliveryMethod === 'pickup' ? 'Đến lấy mang đi' : 'Uống tại quán') }}
             </p>
           </div>
-          <button @click="router.push('/')" class="text-[10px] font-black text-[#C04D1E] uppercase tracking-widest underline">Thay đổi</button>
+          <button @click="isDeliveryPopupOpen = true" class="text-[10px] font-black text-[#C04D1E] uppercase tracking-widest underline">Thay đổi</button>
         </div>
 
         <!-- Cart Items -->
@@ -206,6 +219,81 @@ const handleUpdateQuantity = (index: number, delta: number) => {
             </button>
           </div>
         </div>
+      </div>
+    </transition>
+
+    <!-- Delivery Method Popup -->
+    <transition
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition duration-200 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div v-if="isDeliveryPopupOpen" class="fixed inset-0 z-[100] flex items-end justify-center">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="isDeliveryPopupOpen = false"></div>
+        <transition
+          enter-active-class="transition duration-500 ease-out"
+          enter-from-class="translate-y-full"
+          enter-to-class="translate-y-0"
+          leave-active-class="transition duration-300 ease-in"
+          leave-from-class="translate-y-0"
+          leave-to-class="translate-y-full"
+        >
+          <div class="relative bg-white w-full max-w-md rounded-t-[48px] overflow-hidden shadow-2xl p-8 pt-4">
+            <div class="h-1.5 w-12 bg-gray-200 rounded-full mx-auto mt-4 mb-8"></div>
+            <h3 class="text-2xl font-black text-gray-900 uppercase tracking-tighter mb-8 text-center">Chọn phương thức nhận hàng</h3>
+            
+            <div class="space-y-4">
+              <button
+                @click="selectDeliveryMethod('delivery')"
+                class="w-full flex items-center gap-6 p-6 rounded-3xl border-2 transition-all"
+                :class="cartStore.deliveryMethod === 'delivery' ? 'border-[#C04D1E] bg-[#FFF1ED]' : 'border-gray-50 bg-gray-50'"
+              >
+                <div :class="['w-14 h-14 rounded-2xl flex items-center justify-center transition-all', cartStore.deliveryMethod === 'delivery' ? 'bg-[#C04D1E] text-white shadow-lg shadow-[#C04D1E]/30' : 'bg-white text-gray-400']">
+                  <Truck :size="28" />
+                </div>
+                <div class="text-left">
+                  <p class="font-black text-lg text-gray-900 uppercase tracking-tight">Giao hàng tận nơi</p>
+                  <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Giao nhanh trong 30 phút</p>
+                </div>
+                <Check v-if="cartStore.deliveryMethod === 'delivery'" class="ml-auto text-[#C04D1E]" :size="24" />
+              </button>
+
+              <button
+                @click="selectDeliveryMethod('pickup')"
+                class="w-full flex items-center gap-6 p-6 rounded-3xl border-2 transition-all"
+                :class="cartStore.deliveryMethod === 'pickup' ? 'border-[#C04D1E] bg-[#FFF1ED]' : 'border-gray-50 bg-gray-50'"
+              >
+                <div :class="['w-14 h-14 rounded-2xl flex items-center justify-center transition-all', cartStore.deliveryMethod === 'pickup' ? 'bg-[#C04D1E] text-white shadow-lg shadow-[#C04D1E]/30' : 'bg-white text-gray-400']">
+                  <ShoppingBag :size="28" />
+                </div>
+                <div class="text-left">
+                  <p class="font-black text-lg text-gray-900 uppercase tracking-tight">Đến lấy mang đi</p>
+                  <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Tiết kiệm thời gian chờ</p>
+                </div>
+                <Check v-if="cartStore.deliveryMethod === 'pickup'" class="ml-auto text-[#C04D1E]" :size="24" />
+              </button>
+
+              <button
+                @click="selectDeliveryMethod('dine-in')"
+                class="w-full flex items-center gap-6 p-6 rounded-3xl border-2 transition-all"
+                :class="cartStore.deliveryMethod === 'dine-in' ? 'border-[#C04D1E] bg-[#FFF1ED]' : 'border-gray-50 bg-gray-50'"
+              >
+                <div :class="['w-14 h-14 rounded-2xl flex items-center justify-center transition-all', cartStore.deliveryMethod === 'dine-in' ? 'bg-[#C04D1E] text-white shadow-lg shadow-[#C04D1E]/30' : 'bg-white text-gray-400']">
+                  <Utensils :size="28" />
+                </div>
+                <div class="text-left">
+                  <p class="font-black text-lg text-gray-900 uppercase tracking-tight">Uống tại quán</p>
+                  <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Thưởng thức tại chỗ</p>
+                </div>
+                <Check v-if="cartStore.deliveryMethod === 'dine-in'" class="ml-auto text-[#C04D1E]" :size="24" />
+              </button>
+            </div>
+            <div class="h-8"></div>
+          </div>
+        </transition>
       </div>
     </transition>
   </div>
