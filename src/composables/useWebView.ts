@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue';
 export function useWebView() {
   const isWebView = ref(false);
   const webViewType = ref<'facebook' | 'zalo' | 'other' | null>(null);
+  const showGuard = ref(false);
 
   const detectWebView = () => {
     const ua = navigator.userAgent || navigator.vendor || (window as any).opera;
@@ -32,22 +33,32 @@ export function useWebView() {
 
   const openInExternalBrowser = () => {
     const url = window.location.href;
+    const ua = navigator.userAgent;
     
     // For Android, we can try to use intent
-    if (/Android/i.test(navigator.userAgent)) {
+    if (/Android/i.test(ua)) {
+      // Try to force open in Chrome using intent scheme
       const intentUrl = `intent://${url.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end`;
       window.location.href = intentUrl;
-    } else if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      
+      // Fallback for some Android WebViews if intent fails
+      setTimeout(() => {
+        window.open(url, '_blank');
+      }, 500);
+    } else if (/iPhone|iPad|iPod/i.test(ua)) {
       // iOS doesn't have a direct way to force open Safari from WebView easily 
-      // without specific app support, so we just show instructions.
       // Some apps support 'googlechrome://' or 'safari-https://' but it's not universal.
-      alert('Vui lòng nhấn vào biểu tượng (...) và chọn "Mở bằng trình duyệt" (Open in Safari/Browser)');
+      // The most reliable way is to tell the user to use the app's built-in "Open in Browser"
+      alert('Vui lòng nhấn vào biểu tượng (...) ở góc màn hình và chọn "Mở bằng trình duyệt" (Open in Safari/Browser)');
+    } else {
+      window.open(url, '_blank');
     }
   };
 
   return {
     isWebView,
     webViewType,
+    showGuard,
     openInExternalBrowser
   };
 }

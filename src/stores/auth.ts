@@ -9,7 +9,7 @@ import { useWebView } from '../composables/useWebView';
 import { toast } from 'vue-sonner';
 
 export const useAuthStore = defineStore('auth', () => {
-  const { isWebView } = useWebView();
+  const { isWebView, showGuard } = useWebView();
   const user = ref<FirebaseUser | null>(null);
   const profile = ref<UserProfile | null>(null);
   const loading = ref(true);
@@ -63,7 +63,8 @@ export const useAuthStore = defineStore('auth', () => {
 
   const login = async () => {
     if (isWebView.value) {
-      toast.error('Vui lòng mở bằng trình duyệt Chrome hoặc Safari để đăng nhập.', {
+      showGuard.value = true;
+      toast.info('Vui lòng mở bằng trình duyệt Chrome hoặc Safari để đăng nhập.', {
         duration: 5000
       });
       return;

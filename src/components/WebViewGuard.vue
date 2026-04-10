@@ -3,11 +3,10 @@ import { ref } from 'vue';
 import { useWebView } from '../composables/useWebView';
 import { AlertCircle, ExternalLink, Info, X } from 'lucide-vue-next';
 
-const { isWebView, webViewType, openInExternalBrowser } = useWebView();
-const isDismissed = ref(false);
+const { webViewType, showGuard, openInExternalBrowser } = useWebView();
 
 const dismiss = () => {
-  isDismissed.value = true;
+  showGuard.value = false;
 };
 </script>
 
@@ -21,7 +20,7 @@ const dismiss = () => {
     leave-to-class="translate-y-full opacity-0"
   >
     <div 
-      v-if="isWebView && !isDismissed" 
+      v-if="showGuard" 
       class="fixed inset-x-0 bottom-0 z-[200] p-4 sm:p-6"
     >
       <div class="max-w-md mx-auto bg-white rounded-[32px] shadow-2xl border border-orange-100 overflow-hidden">
