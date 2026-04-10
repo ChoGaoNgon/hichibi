@@ -1236,6 +1236,14 @@ const seedData = async () => {
                       <p class="font-black text-gray-900 uppercase tracking-tight">{{ order.customerName }}</p>
                       <p class="text-sm text-gray-600 font-bold">{{ order.customerPhone }}</p>
                       <p class="text-sm text-gray-500 leading-relaxed">{{ order.address }}</p>
+                      <a 
+                        v-if="order.location" 
+                        :href="`https://www.google.com/maps?q=${order.location.lat},${order.location.lng}`" 
+                        target="_blank"
+                        class="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-100 transition-all border border-blue-100"
+                      >
+                        <MapPin :size="12" /> Xem trên bản đồ
+                      </a>
                       <div v-if="order.note" class="mt-3 p-3 bg-orange-50 border border-orange-100 rounded-xl">
                         <p class="text-[9px] text-orange-600 font-black uppercase tracking-widest mb-1">Ghi chú khách hàng:</p>
                         <p class="text-xs text-gray-700 font-bold italic">"{{ order.note }}"</p>

@@ -11,7 +11,8 @@ import {
   Truck, 
   XCircle,
   Copy,
-  Plus
+  Plus,
+  MapPin
 } from 'lucide-vue-next';
 import { useAuthStore } from '../stores/auth';
 import { useCartStore } from '../stores/cart';
@@ -28,7 +29,33 @@ const loading = ref(true);
 const selectedOrder = ref<Order | null>(null);
 const orderToCancel = ref<Order | null>(null);
 const isCancelling = ref(false);
+const isUpdatingLocation = ref(false);
 let unsubscribe: (() => void) | null = null;
+
+const updateOrderLocation = async (order: Order) => {
+  isUpdatingLocation.value = true;
+  try {
+    const loc = await authStore.shareLocation();
+    if (loc) {
+      const orderRef = doc(db, 'orders', order.id);
+      await updateDoc(orderRef, {
+        location: loc,
+        updatedAt: Timestamp.now()
+      });
+      
+      if (selectedOrder.value && selectedOrder.value.id === order.id) {
+        selectedOrder.value = { ...selectedOrder.value, location: loc };
+      }
+      
+      toast.success('Đã cập nhật vị trí cho đơn hàng');
+    }
+  } catch (error) {
+    console.error('Error updating order location', error);
+    toast.error('Có lỗi xảy ra khi cập nhật vị trí');
+  } finally {
+    isUpdatingLocation.value = false;
+  }
+};
 
 const openDetails = (order: Order) => {
   selectedOrder.value = order;
@@ -347,6 +374,21 @@ const formatDate = (timestamp: Timestamp) => {
               <p class="text-sm font-bold text-gray-900">{{ selectedOrder.customerName }}</p>
               <p class="text-sm text-gray-600">{{ selectedOrder.customerPhone }}</p>
               <p v-if="selectedOrder.address" class="text-sm text-gray-600">{{ selectedOrder.address }}</p>
+              
+              <div v-if="selectedOrder.deliveryMethod === 'delivery'" class="pt-2">
+                <button 
+                  @click="updateOrderLocation(selectedOrder)"
+                  :disabled="isUpdatingLocation"
+                  class="w-full flex items-center justify-center gap-2 py-3 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-all border border-blue-100"
+                >
+                  <div v-if="isUpdatingLocation" class="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                  <MapPin v-else :size="14" />
+                  {{ selectedOrder.location ? 'Cập nhật lại vị trí GPS' : 'Gắn vị trí GPS hiện tại' }}
+                </button>
+                <p v-if="selectedOrder.location" class="text-[8px] text-green-600 font-bold uppercase tracking-widest mt-1 text-center">
+                  Đã có dữ liệu vị trí GPS
+                </p>
+              </div>
             </div>
           </div>
 

@@ -200,9 +200,14 @@ const handleAdd = (item: CartItem) => {
   closeProductModal();
 };
 
-const selectDeliveryMethod = (method: 'delivery' | 'pickup' | 'dine-in') => {
+const selectDeliveryMethod = async (method: 'delivery' | 'pickup' | 'dine-in') => {
   cartStore.setDeliveryMethod(method);
   isDeliveryPopupOpen.value = false;
+  
+  if (method === 'delivery') {
+    // Automatically trigger location sharing if not already shared or if user wants to update
+    await authStore.shareLocation();
+  }
 };
 </script>
 

@@ -6,6 +6,10 @@ export interface UserProfile {
   displayName: string;
   phoneNumber?: string;
   address?: string;
+  location?: {
+    lat: number;
+    lng: number;
+  };
   role: 'admin' | 'staff' | 'customer' | 'tablet';
   createdAt: Timestamp;
 }
@@ -62,6 +66,10 @@ export interface Order {
   status: OrderStatus;
   deliveryMethod: DeliveryMethod;
   address: string;
+  location?: {
+    lat: number;
+    lng: number;
+  };
   note?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;

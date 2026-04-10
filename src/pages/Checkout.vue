@@ -18,6 +18,7 @@ import {
 } from 'lucide-vue-next';
 import { useCartStore } from '../stores/cart';
 import { useAuthStore } from '../stores/auth';
+import { toast } from 'vue-sonner';
 import { db, collection, addDoc, Timestamp, OperationType, handleFirestoreError, getDocs, query, where, doc, updateDoc, increment } from '../firebase';
 import type { Order, OrderStatus, Voucher } from '../types';
 import { sendTelegramNotification } from '../services/telegramService';
@@ -30,6 +31,7 @@ const router = useRouter();
 const customerName = ref(authStore.profile?.displayName || '');
 const customerPhone = ref(authStore.profile?.phoneNumber || '');
 const address = ref(authStore.profile?.address || '');
+const location = ref<{ lat: number; lng: number } | null>(authStore.profile?.location || null);
 const note = ref('');
 
 // Auto-fill when profile loads
@@ -44,8 +46,44 @@ watch(() => authStore.profile, (newProfile) => {
     if (!address.value || address.value === '') {
       address.value = newProfile.address || '';
     }
+    if (!location.value) {
+      location.value = newProfile.location || null;
+    }
   }
 }, { immediate: true });
+
+const isGettingLocation = ref(false);
+const shareLocation = () => {
+  if (!navigator.geolocation) {
+    toast.error('Trình duyệt của bạn không hỗ trợ định vị.');
+    return;
+  }
+
+  isGettingLocation.value = true;
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const { latitude, longitude } = position.coords;
+      location.value = { lat: latitude, lng: longitude };
+      
+      // Update address field with a descriptive text if it's empty
+      if (!address.value) {
+        address.value = `Vị trí đã chia sẻ (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`;
+      }
+      
+      // Save to profile for next time
+      authStore.updateProfile({ location: { lat: latitude, lng: longitude } });
+      
+      isGettingLocation.value = false;
+      toast.success('Đã lấy vị trí thành công!');
+    },
+    (err) => {
+      console.error('Geolocation error', err);
+      isGettingLocation.value = false;
+      toast.error('Không thể lấy vị trí. Vui lòng kiểm tra quyền truy cập.');
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
+};
 
 const isSubmitting = ref(false);
 const orderSuccess = ref<string | null>(null);
@@ -142,6 +180,7 @@ const handleSubmit = async () => {
       status: 'pending' as OrderStatus,
       deliveryMethod: cartStore.deliveryMethod,
       address: cartStore.deliveryMethod === 'delivery' ? address.value : (cartStore.deliveryMethod === 'pickup' ? 'Nhận tại cửa hàng' : 'Uống tại quán'),
+      location: cartStore.deliveryMethod === 'delivery' ? (location.value || undefined) : undefined,
       note: note.value,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
@@ -259,15 +298,38 @@ const handleSubmit = async () => {
                 class="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-[#C04D1E] transition-all"
               />
             </div>
-            <div v-if="cartStore.deliveryMethod === 'delivery'" class="relative">
-              <MapPin class="absolute left-4 top-4 text-gray-400" :size="16" />
-              <textarea
-                :required="!authStore.isTablet"
-                placeholder="Địa chỉ giao hàng"
-                v-model="address"
-                rows="2"
-                class="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-[#C04D1E] transition-all resize-none"
-              ></textarea>
+            <div v-if="cartStore.deliveryMethod === 'delivery'" class="space-y-4">
+              <div class="relative">
+                <MapPin class="absolute left-4 top-4 text-gray-400" :size="16" />
+                <textarea
+                  :required="!authStore.isTablet"
+                  placeholder="Địa chỉ giao hàng"
+                  v-model="address"
+                  rows="2"
+                  class="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-[#C04D1E] transition-all resize-none"
+                ></textarea>
+              </div>
+              
+              <button 
+                type="button"
+                @click="shareLocation"
+                :disabled="isGettingLocation"
+                class="w-full flex items-center justify-center gap-2 py-4 bg-orange-50 text-orange-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-orange-100 transition-all border border-orange-100"
+              >
+                <template v-if="isGettingLocation">
+                  <div class="w-4 h-4 border-2 border-orange-600 border-t-transparent rounded-full animate-spin"></div>
+                  Đang lấy vị trí...
+                </template>
+                <template v-else>
+                  <MapPin :size="16" />
+                  {{ location ? 'Cập nhật vị trí hiện tại' : 'Chia sẻ vị trí hiện tại' }}
+                </template>
+              </button>
+              
+              <div v-if="location" class="p-3 bg-green-50 rounded-xl border border-green-100 flex items-center gap-2">
+                <CheckCircle :size="14" class="text-green-600" />
+                <p class="text-[9px] font-bold text-green-700 uppercase tracking-widest">Đã gắn vị trí GPS vào đơn hàng</p>
+              </div>
             </div>
           </div>
         </div>

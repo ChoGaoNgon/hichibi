@@ -22,6 +22,8 @@ export async function syncOrderToGoogleSheets(order: any) {
       totalAmount: order.totalAmount,
       deliveryMethod: order.deliveryMethod,
       status: order.status,
+      address: order.address,
+      location: order.location ? `https://www.google.com/maps?q=${order.location.lat},${order.location.lng}` : '',
       items: order.items.map((item: any) => ({
         name: item.name,
         quantity: item.quantity,

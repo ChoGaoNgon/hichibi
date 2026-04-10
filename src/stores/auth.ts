@@ -90,12 +90,52 @@ export const useAuthStore = defineStore('auth', () => {
       const docRef = doc(db, 'users', user.value.uid);
       await setDoc(docRef, { ...profile.value, ...data }, { merge: true });
       profile.value = { ...profile.value, ...data } as UserProfile;
-      toast.success('Đã cập nhật thông tin cá nhân');
+      return true;
     } catch (error) {
       console.error('Update profile failed', error);
       toast.error('Cập nhật thông tin thất bại');
+      return false;
     }
   };
 
-  return { user, profile, loading, isReady, isAdmin, isStaff, isTablet, isCustomer, init, login, logout, updateProfile };
+  const shareLocation = async () => {
+    return new Promise<{ lat: number; lng: number } | null>((resolve) => {
+      if (!navigator.geolocation) {
+        toast.error('Trình duyệt của bạn không hỗ trợ định vị.');
+        resolve(null);
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          const loc = { lat: latitude, lng: longitude };
+          
+          // Update profile if logged in
+          if (user.value) {
+            const success = await updateProfile({ 
+              location: loc,
+              // Only update address if it's empty
+              ...(profile.value?.address ? {} : { address: `Vị trí đã chia sẻ (${latitude.toFixed(4)}, ${longitude.toFixed(4)})` })
+            });
+            if (success) {
+              toast.success('Đã cập nhật vị trí thành công!');
+            }
+          } else {
+            toast.success('Đã lấy vị trí thành công!');
+          }
+          
+          resolve(loc);
+        },
+        (err) => {
+          console.error('Geolocation error', err);
+          toast.error('Không thể lấy vị trí. Vui lòng kiểm tra quyền truy cập.');
+          resolve(null);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    });
+  };
+
+  return { user, profile, loading, isReady, isAdmin, isStaff, isTablet, isCustomer, init, login, logout, updateProfile, shareLocation };
 });

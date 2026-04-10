@@ -29,7 +29,7 @@ export async function sendTelegramNotification(order: any) {
 👤 Khách: ${order.customerName}
 📞 ${order.customerPhone}
 📍 Địa chỉ: ${order.address}
-🚚 Phương thức giao: ${deliveryMethodText}
+${order.location ? `🗺 Map: https://www.google.com/maps?q=${order.location.lat},${order.location.lng}\n` : ''}🚚 Phương thức giao: ${deliveryMethodText}
 
 🍜 Món:
 ${itemsText}

@@ -174,6 +174,14 @@ const handleLogout = async () => {
                   class="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-[#C04D1E] transition-all resize-none"
                 ></textarea>
               </div>
+              <button 
+                type="button"
+                @click="authStore.shareLocation"
+                class="w-full flex items-center justify-center gap-2 py-4 bg-orange-50 text-orange-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-100 transition-all border border-orange-100 mt-2"
+              >
+                <MapPin :size="14" />
+                {{ authStore.profile?.location ? 'Cập nhật vị trí hiện tại' : 'Chia sẻ vị trí hiện tại' }}
+              </button>
             </div>
           </div>
 
