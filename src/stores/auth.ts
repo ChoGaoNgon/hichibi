@@ -4,10 +4,12 @@ import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, db,
 import type { UserProfile } from '../types';
 import type { User as FirebaseUser } from 'firebase/auth';
 import router from '../router';
+import { useWebView } from '../composables/useWebView';
 
 import { toast } from 'vue-sonner';
 
 export const useAuthStore = defineStore('auth', () => {
+  const { isWebView } = useWebView();
   const user = ref<FirebaseUser | null>(null);
   const profile = ref<UserProfile | null>(null);
   const loading = ref(true);
@@ -60,6 +62,12 @@ export const useAuthStore = defineStore('auth', () => {
   };
 
   const login = async () => {
+    if (isWebView.value) {
+      toast.error('Vui lòng mở bằng trình duyệt Chrome hoặc Safari để đăng nhập.', {
+        duration: 5000
+      });
+      return;
+    }
     try {
       await signInWithPopup(auth, googleProvider);
       toast.success('Đăng nhập thành công');

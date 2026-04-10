@@ -5,6 +5,7 @@ import { useAuthStore } from './stores/auth';
 import { Toaster, toast } from 'vue-sonner';
 import Navbar from './components/Navbar.vue';
 import Footer from './components/Footer.vue';
+import WebViewGuard from './components/WebViewGuard.vue';
 import { db, collection, query, where, onSnapshot } from './firebase';
 import type { Order, OrderStatus } from './types';
 
@@ -86,6 +87,7 @@ onUnmounted(() => {
 
 <template>
   <Toaster position="top-center" richColors :expand="false" :offset="32" />
+  <WebViewGuard />
   <div v-if="authStore.loading" class="h-screen flex items-center justify-center bg-orange-50">
     <div class="w-12 h-12 border-4 border-orange-600 border-t-transparent rounded-full animate-spin"></div>
   </div>
