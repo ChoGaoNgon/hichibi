@@ -53,7 +53,10 @@ const closeMenu = () => {
             <div class="w-10 h-10 bg-orange-600 rounded-full flex items-center justify-center text-white group-hover:scale-110 transition-transform">
               <Coffee :size="24" />
             </div>
-            <span class="text-xl font-bold text-gray-900 hidden sm:block uppercase tracking-tight">THE COFFEE HOUSE</span>
+            <div class="hidden sm:flex flex-col">
+              <span class="text-xl font-black text-gray-900 uppercase tracking-tighter leading-none">Hi chibi</span>
+              <span class="text-[10px] font-black text-orange-600 uppercase tracking-widest leading-none mt-0.5">Bingsu & Drinks</span>
+            </div>
           </router-link>
         </div>
 

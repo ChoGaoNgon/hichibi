@@ -1,4 +1,4 @@
-# Technical Flow Documentation - The Hichibi Coffee House
+# Technical Flow Documentation - Hi chibi Coffee House
 
 Tài liệu này mô tả chi tiết các luồng xử lý kỹ thuật chính trong hệ thống, cách thức giao tiếp giữa Frontend (Vue 3) và Backend (Firebase).
 

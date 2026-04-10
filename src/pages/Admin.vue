@@ -26,7 +26,8 @@ import {
   Store,
   Printer,
   RefreshCw,
-  HardDrive
+  HardDrive,
+  CreditCard
 } from 'lucide-vue-next';
 import { 
   db, 
@@ -205,7 +206,11 @@ const storeInfo = ref({
   instagram: '',
   telegramBotToken: '',
   telegramChatId: '',
-  googleSheetsHookUrl: ''
+  googleSheetsHookUrl: '',
+  bankName: '',
+  bankAccount: '',
+  bankOwner: '',
+  bankQR: ''
 });
 const isSavingStoreInfo = ref(false);
 const orderToPrint = ref<Order | null>(null);
@@ -1615,6 +1620,51 @@ const seedData = async () => {
               </div>
             </div>
 
+            <div class="pt-8 border-t border-gray-100 space-y-8">
+              <h3 class="text-xl font-black text-gray-900 uppercase tracking-tighter flex items-center gap-3">
+                <CreditCard :size="24" class="text-orange-600" />
+                Thông tin chuyển khoản
+              </h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="space-y-3">
+                  <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Ngân hàng</label>
+                  <input 
+                    v-model="storeInfo.bankName" 
+                    type="text" 
+                    class="w-full p-5 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
+                    placeholder="Vietcombank, Techcombank..."
+                  />
+                </div>
+                <div class="space-y-3">
+                  <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Số tài khoản</label>
+                  <input 
+                    v-model="storeInfo.bankAccount" 
+                    type="text" 
+                    class="w-full p-5 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
+                    placeholder="0123456789"
+                  />
+                </div>
+                <div class="space-y-3">
+                  <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Chủ tài khoản</label>
+                  <input 
+                    v-model="storeInfo.bankOwner" 
+                    type="text" 
+                    class="w-full p-5 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
+                    placeholder="NGUYEN VAN A"
+                  />
+                </div>
+                <div class="space-y-3">
+                  <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Link ảnh QR (URL)</label>
+                  <input 
+                    v-model="storeInfo.bankQR" 
+                    type="text" 
+                    class="w-full p-5 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
+                    placeholder="https://img.vietqr.io/image/..."
+                  />
+                </div>
+              </div>
+            </div>
+
             <div class="pt-8 border-t border-gray-100">
               <h3 class="text-xl font-black text-gray-900 uppercase tracking-tighter mb-6 flex items-center gap-3">
                 <div class="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
@@ -2080,7 +2130,8 @@ const seedData = async () => {
     <!-- Printable Order Receipt -->
     <div id="print-area" v-if="orderToPrint" class="hidden print:block bg-white text-black w-[74mm] p-3 mx-auto text-[10px]">
       <div class="text-center mb-3 border-b border-gray-300 pb-2">
-        <h1 class="text-sm font-black uppercase tracking-tighter mb-1">{{ storeInfo.name || 'THE COFFEE HOUSE' }}</h1>
+        <h1 class="text-sm font-black uppercase tracking-tighter mb-0.5">{{ storeInfo.name || 'Hi chibi' }}</h1>
+        <p class="text-[8px] font-black text-orange-600 uppercase tracking-widest leading-none mb-1">Bingsu & Drinks</p>
         <p class="text-[8px] text-gray-600 mb-0.5">{{ storeInfo.address || 'Địa chỉ cửa hàng' }}</p>
         <p class="text-[8px] text-gray-600 mb-0.5">SĐT: {{ storeInfo.phone || '---' }}</p>
         <div v-if="storeInfo.facebook || storeInfo.instagram" class="text-[8px] text-gray-500 mt-1">
@@ -2146,6 +2197,19 @@ const seedData = async () => {
         <div class="flex justify-between text-[11px] font-black uppercase tracking-tighter pt-1 border-t border-gray-300">
           <span>Tổng cộng:</span>
           <span>{{ (orderToPrint.totalAmount || 0).toLocaleString() }}đ</span>
+        </div>
+      </div>
+
+      <!-- Bank Transfer Info -->
+      <div v-if="storeInfo.bankName && storeInfo.bankAccount" class="border-t border-gray-300 pt-3 mb-4 space-y-2">
+        <h3 class="text-[9px] font-black uppercase tracking-tight text-center mb-2">THÔNG TIN CHUYỂN KHOẢN</h3>
+        <div class="flex flex-col items-center gap-2">
+          <div class="text-[8px] text-center space-y-0.5">
+            <p><span class="font-bold">NH:</span> {{ storeInfo.bankName }}</p>
+            <p><span class="font-bold">STK:</span> {{ storeInfo.bankAccount }}</p>
+            <p><span class="font-bold">CTK:</span> {{ storeInfo.bankOwner }}</p>
+          </div>
+          <img v-if="storeInfo.bankQR" :src="storeInfo.bankQR" alt="QR Code" class="w-24 h-24 object-contain border border-gray-100 rounded-lg" referrerPolicy="no-referrer" />
         </div>
       </div>
 

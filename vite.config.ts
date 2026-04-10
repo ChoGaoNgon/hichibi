@@ -13,9 +13,9 @@ export default defineConfig(({mode}) => {
       VitePWA({
         registerType: 'autoUpdate',
         manifest: {
-          name: 'Hichibi Coffee',
-          short_name: 'Hichibi',
-          description: 'Hichibi Coffee - Đặt món nhanh chóng, tiện lợi',
+          name: 'Hi chibi Coffee',
+          short_name: 'Hi chibi',
+          description: 'Hi chibi Coffee - Đặt món nhanh chóng, tiện lợi',
           theme_color: '#C04D1E',
           background_color: '#FFF8F6',
           display: 'standalone',

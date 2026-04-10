@@ -11,7 +11,10 @@ import { Coffee, Phone, MapPin } from 'lucide-vue-next';
             <div class="w-12 h-12 bg-orange-600 rounded-full flex items-center justify-center text-white shadow-lg shadow-orange-600/20">
               <Coffee :size="28" />
             </div>
-            <span class="text-2xl font-black uppercase tracking-tighter">THE COFFEE HOUSE</span>
+            <div class="flex flex-col">
+              <span class="text-2xl font-black uppercase tracking-tighter leading-none">Hi chibi</span>
+              <span class="text-[10px] font-black text-orange-600 uppercase tracking-widest leading-none mt-1">Bingsu & Drinks</span>
+            </div>
           </div>
           <p class="text-gray-400 text-sm leading-relaxed font-medium">
             Chúng tôi tin rằng mỗi tách cà phê là một câu chuyện, và chúng tôi ở đây để kể câu chuyện đó cùng bạn.
@@ -48,7 +51,7 @@ import { Coffee, Phone, MapPin } from 'lucide-vue-next';
         </div>
       </div>
       <div class="pt-10 border-t border-gray-800 text-center text-gray-500 text-[10px] font-black uppercase tracking-[0.2em]">
-        © 2026 The Coffee House Clone • Designed with Passion
+        © 2026 Hi chibi Coffee House • Designed with @ChoGaoNgon
       </div>
     </div>
   </footer>

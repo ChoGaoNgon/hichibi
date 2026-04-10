@@ -215,10 +215,13 @@ const selectDeliveryMethod = (method: 'delivery' | 'pickup' | 'dine-in') => {
           <Coffee :size="20" />
         </div>
         <div @click="isDeliveryPopupOpen = true" class="cursor-pointer">
-          <div class="flex items-center gap-2 mb-0.5">
-            <span class="text-xs font-black text-[#C04D1E] uppercase tracking-tighter">Hichibi</span>
-            <span class="text-[8px] font-black text-gray-300 uppercase tracking-widest">•</span>
-            <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none">DELIVER TO</p>
+          <div class="flex items-start gap-2 mb-0.5">
+            <div class="flex flex-col">
+              <span class="text-xs font-black text-[#C04D1E] uppercase tracking-tighter leading-none">Hi chibi</span>
+              <span class="text-[7px] font-black text-orange-600 uppercase tracking-widest leading-none mt-0.5">Bingsu & Drinks</span>
+            </div>
+            <span class="text-[8px] font-black text-gray-300 uppercase tracking-widest mt-1">•</span>
+            <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mt-1">DELIVER TO</p>
           </div>
           <div class="flex items-center gap-1">
             <span class="text-sm font-black text-gray-900 uppercase tracking-tight">

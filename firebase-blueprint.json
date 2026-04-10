@@ -134,6 +134,10 @@
     "/vouchers/{voucherId}": {
       "schema": "Voucher",
       "description": "Discount vouchers"
+    },
+    "/settings/{settingId}": {
+      "schema": "object",
+      "description": "Store settings and configuration"
     }
   }
 }

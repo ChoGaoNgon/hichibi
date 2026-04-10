@@ -1,7 +1,7 @@
-# The Hichibi Coffee House - Vue 3 + Firebase
+# Hi chibi Coffee House - Bingsu & Drinks
 
 ## 1. Giới thiệu hệ thống
-Hệ thống quản lý và đặt hàng cho quán cà phê **The Hichibi Coffee House** được xây dựng bằng Vue 3, Pinia, Tailwind CSS và Firebase. Hệ thống hỗ trợ đa nền tảng (Mobile, Tablet, Desktop) và đa vai trò người dùng, tích hợp thông báo thời gian thực qua Telegram.
+Hệ thống quản lý và đặt hàng cho quán cà phê **Hi chibi Coffee House** được xây dựng bằng Vue 3, Pinia, Tailwind CSS và Firebase. Hệ thống hỗ trợ đa nền tảng (Mobile, Tablet, Desktop) và đa vai trò người dùng, tích hợp thông báo thời gian thực qua Telegram.
 
 ## 2. Phân quyền người dùng (RBAC)
 Hệ thống chia làm 4 vai trò chính:

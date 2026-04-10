@@ -124,7 +124,7 @@ const logout = async () => {
           <Coffee :size="24" />
         </div>
         <div>
-          <h1 class="text-xl font-black text-gray-900 uppercase tracking-tighter">Hichibi Tablet</h1>
+          <h1 class="text-xl font-black text-gray-900 uppercase tracking-tighter">Hi chibi Tablet</h1>
           <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Staff Mode • {{ authStore.user?.email }}</p>
         </div>
       </div>
