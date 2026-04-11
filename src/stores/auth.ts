@@ -107,10 +107,10 @@ export const useAuthStore = defineStore('auth', () => {
     }
   };
 
-  const shareLocation = async () => {
+  const shareLocation = async (silent = false) => {
     return new Promise<{ lat: number; lng: number } | null>((resolve) => {
       if (!navigator.geolocation) {
-        toast.error('Trình duyệt của bạn không hỗ trợ định vị.');
+        if (!silent) toast.error('Trình duyệt của bạn không hỗ trợ định vị.');
         resolve(null);
         return;
       }
@@ -127,10 +127,10 @@ export const useAuthStore = defineStore('auth', () => {
               // Only update address if it's empty
               ...(profile.value?.address ? {} : { address: `Vị trí đã chia sẻ (${latitude.toFixed(4)}, ${longitude.toFixed(4)})` })
             });
-            if (success) {
+            if (success && !silent) {
               toast.success('Đã cập nhật vị trí thành công!');
             }
-          } else {
+          } else if (!silent) {
             toast.success('Đã lấy vị trí thành công!');
           }
           
@@ -138,7 +138,7 @@ export const useAuthStore = defineStore('auth', () => {
         },
         (err) => {
           console.error('Geolocation error', err);
-          toast.error('Không thể lấy vị trí. Vui lòng kiểm tra quyền truy cập.');
+          if (!silent) toast.error('Không thể lấy vị trí. Vui lòng kiểm tra quyền truy cập.');
           resolve(null);
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }

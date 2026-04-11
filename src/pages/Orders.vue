@@ -35,7 +35,7 @@ let unsubscribe: (() => void) | null = null;
 const updateOrderLocation = async (order: Order) => {
   isUpdatingLocation.value = true;
   try {
-    const loc = await authStore.shareLocation();
+    const loc = await authStore.shareLocation(true);
     if (loc) {
       const orderRef = doc(db, 'orders', order.id);
       await updateDoc(orderRef, {
