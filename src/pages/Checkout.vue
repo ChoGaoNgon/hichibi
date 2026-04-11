@@ -14,7 +14,8 @@ import {
   AlertCircle,
   Utensils,
   Ticket,
-  X
+  X,
+  LayoutDashboard
 } from 'lucide-vue-next';
 import { useCartStore } from '../stores/cart';
 import { useAuthStore } from '../stores/auth';
@@ -213,12 +214,14 @@ const handleSubmit = async () => {
     // Sync to Google Sheets
     syncOrderToGoogleSheets({ id: docRef.id, ...orderData });
     
-    // Redirect to orders for tablet role
+    // Redirect to orders for tablet role - REMOVED AUTO REDIRECT TO SHOW SUCCESS SCREEN
+    /*
     if (authStore.isTablet) {
       setTimeout(() => {
         router.push('/admin?tab=orders');
       }, 1500);
     }
+    */
   } catch (err) {
     handleFirestoreError(err, currentOperation.type, currentOperation.path);
     error.value = 'Có lỗi xảy ra khi đặt hàng. Vui lòng thử lại.';
@@ -250,12 +253,23 @@ const handleSubmit = async () => {
             Chúng tôi sẽ sớm liên hệ với bạn.
           </p>
         </div>
-        <button
-          @click="router.push('/')"
-          class="w-full py-5 bg-[#C04D1E] text-white rounded-3xl font-black text-sm uppercase tracking-widest shadow-xl shadow-[#C04D1E]/30"
-        >
-          Tiếp tục mua sắm
-        </button>
+        <div class="flex flex-col w-full gap-3">
+          <button
+            @click="router.push('/')"
+            class="w-full py-5 bg-[#C04D1E] text-white rounded-3xl font-black text-sm uppercase tracking-widest shadow-xl shadow-[#C04D1E]/30"
+          >
+            Tiếp tục mua sắm
+          </button>
+          
+          <button
+            v-if="authStore.isTablet"
+            @click="router.push('/admin?tab=orders')"
+            class="w-full py-5 bg-gray-900 text-white rounded-3xl font-black text-sm uppercase tracking-widest shadow-xl shadow-black/20 flex items-center justify-center gap-3"
+          >
+            <LayoutDashboard :size="20" />
+            Quản lý đơn hàng
+          </button>
+        </div>
       </div>
 
       <div v-else class="space-y-8">
