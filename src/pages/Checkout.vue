@@ -171,7 +171,7 @@ const handleSubmit = async () => {
 
   let currentOperation = { type: OperationType.CREATE, path: 'orders' };
   try {
-    const orderData: Omit<Order, 'id'> = {
+    const orderData: any = {
       userId: authStore.user?.uid || 'guest',
       customerName: customerName.value || (authStore.isTablet ? 'Tablet Order' : 'Guest'),
       customerPhone: customerPhone.value || (authStore.isTablet ? 'N/A' : 'N/A'),
@@ -180,7 +180,6 @@ const handleSubmit = async () => {
       status: 'pending' as OrderStatus,
       deliveryMethod: cartStore.deliveryMethod,
       address: cartStore.deliveryMethod === 'delivery' ? address.value : (cartStore.deliveryMethod === 'pickup' ? 'Nhận tại cửa hàng' : 'Uống tại quán'),
-      location: cartStore.deliveryMethod === 'delivery' ? (location.value || undefined) : undefined,
       note: note.value,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
@@ -189,6 +188,10 @@ const handleSubmit = async () => {
         discountAmount: discountAmount.value
       } : {})
     };
+
+    if (cartStore.deliveryMethod === 'delivery' && location.value) {
+      orderData.location = location.value;
+    }
 
     currentOperation = { type: OperationType.CREATE, path: 'orders' };
     const docRef = await addDoc(collection(db, 'orders'), orderData);
