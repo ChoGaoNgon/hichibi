@@ -16,7 +16,7 @@ import {
 } from 'lucide-vue-next';
 import { useAuthStore } from '../stores/auth';
 import { useCartStore } from '../stores/cart';
-import { db, collection, query, where, orderBy, onSnapshot, Timestamp, doc, updateDoc, handleFirestoreError, OperationType } from '../firebase';
+import { db, collection, query, where, orderBy, limit, onSnapshot, Timestamp, doc, updateDoc, handleFirestoreError, OperationType } from '../firebase';
 import type { Order, OrderStatus } from '../types';
 import { toast } from 'vue-sonner';
 
@@ -30,6 +30,8 @@ const selectedOrder = ref<Order | null>(null);
 const orderToCancel = ref<Order | null>(null);
 const isCancelling = ref(false);
 const isUpdatingLocation = ref(false);
+const orderLimit = ref(3);
+const hasMoreOrders = ref(true);
 let unsubscribe: (() => void) | null = null;
 
 const updateOrderLocation = async (order: Order) => {
@@ -100,14 +102,22 @@ const setupRealtimeOrders = () => {
   if (!authStore.user) return;
   
   loading.value = true;
+  
+  if (unsubscribe) {
+    unsubscribe();
+  }
+
   const q = query(
     collection(db, 'orders'),
     where('userId', '==', authStore.user.uid),
-    orderBy('createdAt', 'desc')
+    orderBy('createdAt', 'desc'),
+    limit(orderLimit.value)
   );
 
   unsubscribe = onSnapshot(q, (snapshot) => {
     const newOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
+    
+    hasMoreOrders.value = snapshot.docs.length === orderLimit.value;
     
     // Check for status changes to show toast
     if (!loading.value && orders.value.length > 0) {
@@ -131,6 +141,11 @@ const setupRealtimeOrders = () => {
     toast.error('Có lỗi xảy ra khi tải lịch sử đơn hàng');
     loading.value = false;
   });
+};
+
+const loadMoreOrders = () => {
+  orderLimit.value += 3;
+  setupRealtimeOrders();
 };
 
 const showStatusToast = (order: Order) => {
@@ -324,6 +339,15 @@ const formatDate = (timestamp: Timestamp) => {
               </button>
             </div>
           </div>
+        </div>
+
+        <div v-if="hasMoreOrders" class="flex justify-center pt-4">
+          <button 
+            @click="loadMoreOrders"
+            class="px-6 py-3 bg-white border border-gray-200 text-gray-900 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-50 transition-all shadow-sm"
+          >
+            Hiển thị thêm
+          </button>
         </div>
       </div>
     </div>
