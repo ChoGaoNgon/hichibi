@@ -7,7 +7,10 @@ import {
   Plus, 
   XCircle,
   Clock,
-  AlignLeft
+  AlignLeft,
+  Users,
+  Repeat,
+  Trash2
 } from 'lucide-vue-next';
 import { 
   format, 
@@ -38,13 +41,32 @@ const isLoadingEvents = ref(false);
 // Modal state
 const showAddModal = ref(false);
 const isSubmitting = ref(false);
+
+// Delete Modal state
+const showDeleteModal = ref(false);
+const eventToDelete = ref<any>(null);
+const isDeleting = ref(false);
+
 const newEvent = ref({
   summary: '',
   description: '',
+  attendees: '',
   date: format(new Date(), 'yyyy-MM-dd'),
   startTime: '09:00',
-  endTime: '10:00'
+  endTime: '10:00',
+  isRecurring: false,
+  recurringDays: [] as string[]
 });
+
+const weekDays = [
+  { label: 'T2', value: 'MO' },
+  { label: 'T3', value: 'TU' },
+  { label: 'T4', value: 'WE' },
+  { label: 'T5', value: 'TH' },
+  { label: 'T6', value: 'FR' },
+  { label: 'T7', value: 'SA' },
+  { label: 'CN', value: 'SU' }
+];
 
 const connectCalendar = async () => {
   try {
@@ -170,10 +192,56 @@ const closeAddModal = () => {
   newEvent.value = {
     summary: '',
     description: '',
+    attendees: '',
     date: format(new Date(), 'yyyy-MM-dd'),
     startTime: '09:00',
-    endTime: '10:00'
+    endTime: '10:00',
+    isRecurring: false,
+    recurringDays: []
   };
+};
+
+const openDeleteModal = (event: any) => {
+  eventToDelete.value = event;
+  showDeleteModal.value = true;
+};
+
+const closeDeleteModal = () => {
+  showDeleteModal.value = false;
+  eventToDelete.value = null;
+};
+
+const handleDeleteEvent = async (deleteAll: boolean = false) => {
+  if (!calendarToken.value || !eventToDelete.value) return;
+  
+  isDeleting.value = true;
+  try {
+    let eventId = eventToDelete.value.id;
+    if (deleteAll && eventToDelete.value.recurringEventId) {
+      eventId = eventToDelete.value.recurringEventId;
+    }
+    
+    const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${calendarToken.value}`
+      }
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error?.message || 'Failed to delete event');
+    }
+    
+    toast.success('Đã xóa sự kiện thành công');
+    closeDeleteModal();
+    fetchEvents();
+  } catch (error) {
+    console.error('Error deleting event:', error);
+    toast.error('Có lỗi xảy ra khi xóa sự kiện');
+  } finally {
+    isDeleting.value = false;
+  }
 };
 
 const handleAddEvent = async () => {
@@ -197,7 +265,15 @@ const handleAddEvent = async () => {
     // Get user's timezone
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     
-    const eventBody = {
+    let attendeesList: { email: string }[] = [];
+    if (newEvent.value.attendees) {
+      attendeesList = newEvent.value.attendees
+        .split(',')
+        .map(email => ({ email: email.trim() }))
+        .filter(a => a.email);
+    }
+    
+    const eventBody: any = {
       summary: newEvent.value.summary,
       description: newEvent.value.description,
       start: {
@@ -210,7 +286,16 @@ const handleAddEvent = async () => {
       }
     };
     
-    const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+    if (attendeesList.length > 0) {
+      eventBody.attendees = attendeesList;
+    }
+    
+    if (newEvent.value.isRecurring && newEvent.value.recurringDays.length > 0) {
+      const rrule = `RRULE:FREQ=WEEKLY;BYDAY=${newEvent.value.recurringDays.join(',')}`;
+      eventBody.recurrence = [rrule];
+    }
+    
+    const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=all', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${calendarToken.value}`,
@@ -304,8 +389,10 @@ const handleAddEvent = async () => {
               <div 
                 v-for="event in day.events" 
                 :key="event.id"
-                class="text-[9px] font-bold bg-orange-50 text-orange-700 px-2 py-1.5 rounded-lg truncate border border-orange-100"
-                :title="event.summary"
+                @click.stop
+                @contextmenu.prevent.stop="openDeleteModal(event)"
+                class="text-[9px] font-bold bg-orange-50 text-orange-700 px-2 py-1.5 rounded-lg truncate border border-orange-100 cursor-context-menu"
+                :title="event.summary + ' (Chuột phải để xóa)'"
               >
                 {{ formatTime(event.start.dateTime || event.start.date) }} - {{ event.summary }}
               </div>
@@ -335,87 +422,191 @@ const handleAddEvent = async () => {
     <!-- Add Event Modal -->
     <div v-if="showAddModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="closeAddModal"></div>
-      <div class="relative bg-white w-full max-w-md rounded-[32px] p-6 shadow-2xl animate-in zoom-in-95 duration-200">
-        <div class="flex justify-between items-center mb-6">
+      <div class="relative bg-white w-full max-w-md rounded-[32px] p-6 shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+        <div class="flex justify-between items-center mb-4 flex-shrink-0">
           <h3 class="text-xl font-black text-gray-900 uppercase tracking-tighter">Thêm sự kiện mới</h3>
           <button @click="closeAddModal" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200">
             <XCircle :size="20" />
           </button>
         </div>
         
-        <form @submit.prevent="handleAddEvent" class="space-y-5">
-          <div class="space-y-2">
+        <form @submit.prevent="handleAddEvent" class="space-y-4 overflow-y-auto pr-2 no-scrollbar flex-grow">
+          <div class="space-y-1.5">
             <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Tiêu đề sự kiện</label>
             <input 
               v-model="newEvent.summary" 
               type="text" 
               required
-              class="w-full p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
+              class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
               placeholder="VD: Họp nhân viên, Nhập hàng..."
             />
           </div>
           
-          <div class="space-y-2">
+          <div class="space-y-1.5">
             <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Ngày</label>
             <input 
               v-model="newEvent.date" 
               type="date" 
               required
-              class="w-full p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
+              class="w-full p-3 bg-gray-50 border-none rounded-xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
             />
           </div>
           
           <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-2">
+            <div class="space-y-1.5">
               <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Bắt đầu</label>
               <div class="relative">
-                <Clock class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" :size="16" />
+                <Clock class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" :size="16" />
                 <input 
                   v-model="newEvent.startTime" 
                   type="time" 
                   required
-                  class="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
+                  class="w-full pl-10 pr-3 py-3 bg-gray-50 border-none rounded-xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
                 />
               </div>
             </div>
-            <div class="space-y-2">
+            <div class="space-y-1.5">
               <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Kết thúc</label>
               <div class="relative">
-                <Clock class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" :size="16" />
+                <Clock class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" :size="16" />
                 <input 
                   v-model="newEvent.endTime" 
                   type="time" 
                   required
-                  class="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
+                  class="w-full pl-10 pr-3 py-3 bg-gray-50 border-none rounded-xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
                 />
               </div>
             </div>
           </div>
           
-          <div class="space-y-2">
+          <div class="space-y-1.5">
+            <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Lặp lại sự kiện</label>
+            <div class="flex items-center gap-2">
+              <input 
+                type="checkbox" 
+                id="isRecurring" 
+                v-model="newEvent.isRecurring" 
+                class="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
+              />
+              <label for="isRecurring" class="text-sm font-bold text-gray-700 cursor-pointer flex items-center gap-1">
+                <Repeat :size="14" class="text-gray-500" />
+                Lặp lại hàng tuần
+              </label>
+            </div>
+          </div>
+          
+          <div v-if="newEvent.isRecurring" class="space-y-1.5">
+            <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Chọn ngày lặp lại</label>
+            <div class="flex flex-wrap gap-2">
+              <label 
+                v-for="day in weekDays" 
+                :key="day.value" 
+                class="flex items-center gap-1 cursor-pointer bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors"
+              >
+                <input 
+                  type="checkbox" 
+                  :value="day.value" 
+                  v-model="newEvent.recurringDays" 
+                  class="w-3 h-3 text-orange-600 rounded focus:ring-orange-500" 
+                />
+                <span class="text-xs font-bold text-gray-700">{{ day.label }}</span>
+              </label>
+            </div>
+          </div>
+          
+          <div class="space-y-1.5">
+            <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Khách mời (Email)</label>
+            <div class="relative">
+              <Users class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" :size="16" />
+              <input 
+                v-model="newEvent.attendees" 
+                type="text" 
+                class="w-full pl-10 pr-3 py-3 bg-gray-50 border-none rounded-xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
+                placeholder="email1@gmail.com, email2@gmail.com"
+              />
+            </div>
+          </div>
+          
+          <div class="space-y-1.5">
             <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Mô tả (Tùy chọn)</label>
             <div class="relative">
-              <AlignLeft class="absolute left-4 top-4 text-gray-400" :size="16" />
+              <AlignLeft class="absolute left-3 top-3 text-gray-400" :size="16" />
               <textarea 
                 v-model="newEvent.description" 
-                rows="3"
-                class="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all resize-none"
+                rows="2"
+                class="w-full pl-10 pr-3 py-3 bg-gray-50 border-none rounded-xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all resize-none"
                 placeholder="Thêm chi tiết về sự kiện..."
               ></textarea>
             </div>
           </div>
           
-          <div class="pt-4">
+          <div class="pt-2 pb-2">
             <button 
               type="submit"
               :disabled="isSubmitting"
-              class="w-full py-4 bg-[#C04D1E] text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-[#A03D18] transition-all shadow-xl shadow-[#C04D1E]/30 flex items-center justify-center gap-2 disabled:opacity-50"
+              class="w-full py-3.5 bg-[#C04D1E] text-white rounded-xl font-black text-sm uppercase tracking-widest hover:bg-[#A03D18] transition-all shadow-xl shadow-[#C04D1E]/30 flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <span v-if="isSubmitting" class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
               <span v-else>Lưu sự kiện</span>
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Delete Event Modal -->
+    <div v-if="showDeleteModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="closeDeleteModal"></div>
+      <div class="relative bg-white w-full max-w-sm rounded-[32px] p-6 shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-xl font-black text-gray-900 uppercase tracking-tighter">Xóa sự kiện</h3>
+          <button @click="closeDeleteModal" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200">
+            <XCircle :size="20" />
+          </button>
+        </div>
+        
+        <div class="space-y-4">
+          <p class="text-sm font-medium text-gray-600">
+            Bạn có chắc chắn muốn xóa sự kiện <span class="font-bold text-gray-900">"{{ eventToDelete?.summary }}"</span> không?
+          </p>
+          
+          <div class="flex flex-col gap-2 pt-2">
+            <template v-if="eventToDelete?.recurringEventId">
+              <button 
+                @click="handleDeleteEvent(false)"
+                :disabled="isDeleting"
+                class="w-full py-3 bg-white border-2 border-red-100 text-red-600 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-red-50 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                Chỉ xóa sự kiện này
+              </button>
+              <button 
+                @click="handleDeleteEvent(true)"
+                :disabled="isDeleting"
+                class="w-full py-3 bg-red-600 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-red-700 transition-all shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <span v-if="isDeleting" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                <span v-else>Xóa tất cả sự kiện lặp lại</span>
+              </button>
+            </template>
+            <template v-else>
+              <button 
+                @click="handleDeleteEvent(false)"
+                :disabled="isDeleting"
+                class="w-full py-3 bg-red-600 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-red-700 transition-all shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <span v-if="isDeleting" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                <span v-else>Xóa sự kiện</span>
+              </button>
+            </template>
+            <button 
+              @click="closeDeleteModal"
+              :disabled="isDeleting"
+              class="w-full py-3 bg-gray-100 text-gray-600 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-2"
+            >
+              Hủy
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>

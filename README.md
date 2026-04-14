@@ -16,6 +16,7 @@ Hệ thống chia làm 4 vai trò chính:
   - Cấu hình thông tin cửa hàng (Tên, địa chỉ, SĐT, mạng xã hội).
   - Cấu hình **Telegram Bot** để nhận thông báo đơn hàng mới.
   - Cấu hình **Google Sheets Sync** để tự động đồng bộ đơn hàng sang bảng tính.
+  - Quản lý **Google Calendar** để tạo, xóa và theo dõi lịch làm việc, sự kiện lặp lại, mời khách tham dự.
   - Quản lý Cache hệ thống và Khởi tạo dữ liệu mẫu (Seed Data).
 
 - **Staff (Nhân viên)**:
@@ -101,4 +102,5 @@ Hệ thống chia làm 4 vai trò chính:
 - Frontend: Vue 3 (Composition API), Vite, Pinia, Vue Router.
 - Styling: Tailwind CSS, Lucide Icons, Motion (Vue Transitions).
 - Backend: Firebase Auth, Cloud Firestore.
-- Notifications: Vue Sonner, Telegram Bot API.
+- Tích hợp: Google Calendar API, Google Sheets API, Telegram Bot API.
+- Notifications: Vue Sonner.
