@@ -62,6 +62,9 @@ const authStore = useAuthStore();
 const router = useRouter();
 const activeTab = ref('dashboard');
 
+// Dashboard View Mode
+const dashboardViewMode = ref<'sheet' | 'firebase'>('sheet');
+
 // Pagination & Search States
 const ITEM_PAGE_SIZE = 6;
 
@@ -206,6 +209,7 @@ const storeInfo = ref({
   telegramBotToken: '',
   telegramChatId: '',
   googleSheetsHookUrl: '',
+  googleSheetsDashboardUrl: '',
   bankName: '',
   bankAccount: '',
   bankOwner: '',
@@ -227,9 +231,17 @@ const fetchStoreInfo = async () => {
     const docSnap = await getDoc(doc(db, 'settings', 'store_info'));
     if (docSnap.exists()) {
       storeInfo.value = { ...storeInfo.value, ...docSnap.data() };
+      if (storeInfo.value.googleSheetsDashboardUrl) {
+        dashboardViewMode.value = 'sheet';
+      } else {
+        dashboardViewMode.value = 'firebase';
+      }
+    } else {
+      dashboardViewMode.value = 'firebase';
     }
   } catch (error) {
     console.error('Error fetching store info:', error);
+    dashboardViewMode.value = 'firebase';
   }
 };
 
@@ -371,12 +383,21 @@ onMounted(async () => {
     fetchProducts(),
     fetchCategories(),
     fetchVouchers(),
-    fetchStatsOrders(),
     fetchUsers(),
     fetchStoreInfo()
   ]);
+  
+  if (dashboardViewMode.value === 'firebase') {
+    await fetchStatsOrders();
+  }
 
   loading.value = false;
+});
+
+watch(dashboardViewMode, async (newMode) => {
+  if (newMode === 'firebase') {
+    await fetchStatsOrders();
+  }
 });
 
 // Dashboard Statistics
@@ -1221,77 +1242,104 @@ const seedData = async () => {
             <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">TỔNG QUAN</h2>
             
             <div class="flex flex-wrap items-center gap-4">
-              <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl border border-gray-100 shadow-sm">
+              <div v-if="storeInfo.googleSheetsDashboardUrl" class="flex bg-gray-100 p-1 rounded-2xl">
+                <button 
+                  @click="dashboardViewMode = 'sheet'"
+                  class="px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                  :class="dashboardViewMode === 'sheet' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500 hover:text-gray-900'"
+                >
+                  Google Sheet
+                </button>
+                <button 
+                  @click="dashboardViewMode = 'firebase'"
+                  class="px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                  :class="dashboardViewMode === 'firebase' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500 hover:text-gray-900'"
+                >
+                  Firebase
+                </button>
+              </div>
+              
+              <div v-if="dashboardViewMode === 'firebase' || !storeInfo.googleSheetsDashboardUrl" class="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl border border-gray-100 shadow-sm">
                 <Calendar :size="14" class="text-gray-400" />
                 <span class="text-[10px] font-black uppercase tracking-widest text-orange-600">Hôm nay</span>
               </div>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-10">
-            <div class="bg-white p-10 rounded-[50px] shadow-sm border border-gray-100 space-y-6">
-              <div class="w-16 h-16 bg-green-100 text-green-600 rounded-3xl flex items-center justify-center">
-                <TrendingUp :size="32" />
-              </div>
-              <div>
-                <p class="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1">Doanh thu hôm nay</p>
-                <p class="text-4xl font-black text-gray-900 tracking-tighter">{{ totalRevenueInRange.toLocaleString() }}đ</p>
-              </div>
-            </div>
-            <div class="bg-white p-10 rounded-[50px] shadow-sm border border-gray-100 space-y-6">
-              <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-3xl flex items-center justify-center">
-                <ShoppingBag :size="32" />
-              </div>
-              <div>
-                <p class="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1">Đơn hàng hôm nay</p>
-                <p class="text-4xl font-black text-gray-900 tracking-tighter">{{ totalOrdersInRange }}</p>
-              </div>
-            </div>
-            <div class="bg-white p-10 rounded-[50px] shadow-sm border border-gray-100 space-y-6">
-              <div class="w-16 h-16 bg-yellow-100 text-yellow-600 rounded-3xl flex items-center justify-center">
-                <Clock :size="32" />
-              </div>
-              <div>
-                <p class="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1">Đơn chờ xử lý</p>
-                <p class="text-4xl font-black text-gray-900 tracking-tighter">{{ pendingOrders }}</p>
-              </div>
-            </div>
+          <div v-if="dashboardViewMode === 'sheet' && storeInfo.googleSheetsDashboardUrl" class="w-full h-[800px] bg-white rounded-[50px] shadow-sm border border-gray-100 overflow-hidden relative">
+            <iframe 
+              :src="storeInfo.googleSheetsDashboardUrl" 
+              class="w-full h-full border-none"
+              title="Google Sheets Dashboard"
+            ></iframe>
           </div>
 
-          <div class="bg-white p-10 rounded-[50px] shadow-sm border border-gray-100 space-y-10">
-            <h3 class="text-2xl font-black text-gray-900 uppercase tracking-tighter">Đơn hàng mới nhất</h3>
-            <div class="overflow-x-auto no-scrollbar">
-              <table class="w-full text-left border-collapse">
-                <thead>
-                  <tr class="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] border-b border-gray-50">
-                    <th class="pb-6 px-4">Mã đơn</th>
-                    <th class="pb-6 px-4">Khách hàng</th>
-                    <th class="pb-6 px-4">Tổng tiền</th>
-                    <th class="pb-6 px-4">Trạng thái</th>
-                    <th class="pb-6 px-4">Ngày đặt</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-50">
-                  <tr v-for="order in orders.slice(0, 5)" :key="order.id" class="group hover:bg-gray-50 transition-colors">
-                    <td class="py-6 px-4 font-black text-orange-600 text-sm">#{{ order.id.slice(-6) }}</td>
-                    <td class="py-6 px-4">
-                      <p class="font-black text-gray-900 text-sm uppercase tracking-tight">{{ order.customerName }}</p>
-                      <p class="text-[10px] text-gray-400 font-bold">{{ order.customerPhone }}</p>
-                    </td>
-                    <td class="py-6 px-4 font-black text-gray-900 tracking-tighter">{{ (order.totalAmount || 0).toLocaleString() }}đ</td>
-                    <td class="py-6 px-4">
-                      <span :class="['px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest', getStatusColor(order.status)]">
-                        {{ order.status }}
-                      </span>
-                    </td>
-                    <td class="py-6 px-4 text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                      {{ order.createdAt.toDate().toLocaleDateString('vi-VN') }}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+          <template v-else>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-10">
+              <div class="bg-white p-10 rounded-[50px] shadow-sm border border-gray-100 space-y-6">
+                <div class="w-16 h-16 bg-green-100 text-green-600 rounded-3xl flex items-center justify-center">
+                  <TrendingUp :size="32" />
+                </div>
+                <div>
+                  <p class="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1">Doanh thu hôm nay</p>
+                  <p class="text-4xl font-black text-gray-900 tracking-tighter">{{ totalRevenueInRange.toLocaleString() }}đ</p>
+                </div>
+              </div>
+              <div class="bg-white p-10 rounded-[50px] shadow-sm border border-gray-100 space-y-6">
+                <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-3xl flex items-center justify-center">
+                  <ShoppingBag :size="32" />
+                </div>
+                <div>
+                  <p class="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1">Đơn hàng hôm nay</p>
+                  <p class="text-4xl font-black text-gray-900 tracking-tighter">{{ totalOrdersInRange }}</p>
+                </div>
+              </div>
+              <div class="bg-white p-10 rounded-[50px] shadow-sm border border-gray-100 space-y-6">
+                <div class="w-16 h-16 bg-yellow-100 text-yellow-600 rounded-3xl flex items-center justify-center">
+                  <Clock :size="32" />
+                </div>
+                <div>
+                  <p class="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1">Đơn chờ xử lý</p>
+                  <p class="text-4xl font-black text-gray-900 tracking-tighter">{{ pendingOrders }}</p>
+                </div>
+              </div>
             </div>
-          </div>
+
+            <div class="bg-white p-10 rounded-[50px] shadow-sm border border-gray-100 space-y-10">
+              <h3 class="text-2xl font-black text-gray-900 uppercase tracking-tighter">Đơn hàng mới nhất</h3>
+              <div class="overflow-x-auto no-scrollbar">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr class="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] border-b border-gray-50">
+                      <th class="pb-6 px-4">Mã đơn</th>
+                      <th class="pb-6 px-4">Khách hàng</th>
+                      <th class="pb-6 px-4">Tổng tiền</th>
+                      <th class="pb-6 px-4">Trạng thái</th>
+                      <th class="pb-6 px-4">Ngày đặt</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-50">
+                    <tr v-for="order in orders.slice(0, 5)" :key="order.id" class="group hover:bg-gray-50 transition-colors">
+                      <td class="py-6 px-4 font-black text-orange-600 text-sm">#{{ order.id.slice(-6) }}</td>
+                      <td class="py-6 px-4">
+                        <p class="font-black text-gray-900 text-sm uppercase tracking-tight">{{ order.customerName }}</p>
+                        <p class="text-[10px] text-gray-400 font-bold">{{ order.customerPhone }}</p>
+                      </td>
+                      <td class="py-6 px-4 font-black text-gray-900 tracking-tighter">{{ (order.totalAmount || 0).toLocaleString() }}đ</td>
+                      <td class="py-6 px-4">
+                        <span :class="['px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest', getStatusColor(order.status)]">
+                          {{ order.status }}
+                        </span>
+                      </td>
+                      <td class="py-6 px-4 text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                        {{ order.createdAt.toDate().toLocaleDateString('vi-VN') }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </template>
         </div>
 
         <!-- Orders Tab -->
@@ -1810,6 +1858,16 @@ const seedData = async () => {
                   placeholder="https://script.google.com/macros/s/.../exec"
                 />
                 <p class="text-[9px] text-gray-400 font-bold italic">Dùng để đồng bộ đơn hàng sang Google Sheets mà không tốn quota Cloud Functions.</p>
+              </div>
+              <div class="space-y-3 md:col-span-2">
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Google Sheets Dashboard URL</label>
+                <input 
+                  v-model="storeInfo.googleSheetsDashboardUrl" 
+                  type="text" 
+                  class="w-full p-5 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
+                  placeholder="https://docs.google.com/spreadsheets/d/.../htmlembed"
+                />
+                <p class="text-[9px] text-gray-400 font-bold italic">Dùng để nhúng màn hình thống kê từ Google Sheets vào trang tổng quan.</p>
               </div>
             </div>
 
