@@ -11,6 +11,7 @@ export interface UserProfile {
     lng: number;
   };
   role: 'admin' | 'staff' | 'customer' | 'tablet';
+  isLocked?: boolean;
   createdAt: Timestamp;
 }
 

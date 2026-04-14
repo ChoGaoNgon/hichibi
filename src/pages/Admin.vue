@@ -27,7 +27,9 @@ import {
   Printer,
   RefreshCw,
   HardDrive,
-  CreditCard
+  CreditCard,
+  Lock,
+  Unlock
 } from 'lucide-vue-next';
 import { 
   db, 
@@ -63,31 +65,10 @@ const products = ref<Product[]>([]);
 const categories = ref<Category[]>([]);
 const vouchers = ref<any[]>([]);
 const users = ref<any[]>([]);
-const userSearch = ref('');
 const userPage = ref(1);
-const USER_PAGE_SIZE = 10;
-
-const filteredUsers = computed(() => {
-  if (!userSearch.value) return users.value;
-  const s = userSearch.value.toLowerCase();
-  return users.value.filter(u => 
-    u.displayName?.toLowerCase().includes(s) || 
-    u.email?.toLowerCase().includes(s) || 
-    u.phoneNumber?.toLowerCase().includes(s)
-  );
-});
-
-const totalUserPages = computed(() => Math.ceil(filteredUsers.value.length / USER_PAGE_SIZE));
-
-const paginatedUsers = computed(() => {
-  const start = (userPage.value - 1) * USER_PAGE_SIZE;
-  return filteredUsers.value.slice(start, start + USER_PAGE_SIZE);
-});
-
-// Reset page when searching
-watch(userSearch, () => {
-  userPage.value = 1;
-});
+const USER_PAGE_SIZE = 5;
+const userCursors = ref<any[]>([]);
+const hasMoreUsers = ref(false);
 
 const loading = ref(true);
 const isDeleting = ref(false);
@@ -470,11 +451,26 @@ const fetchVouchers = async () => {
   }
 };
 
-const fetchUsers = async () => {
+const fetchUsers = async (page = 1) => {
   if (!authStore.isAdmin) return;
   try {
-    const snapshot = await getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc')));
+    let q = query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(USER_PAGE_SIZE));
+    
+    if (page > 1 && userCursors.value[page - 1]) {
+      q = query(collection(db, 'users'), orderBy('createdAt', 'desc'), startAfter(userCursors.value[page - 1]), limit(USER_PAGE_SIZE));
+    }
+
+    const snapshot = await getDocs(q);
     users.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+    
+    if (snapshot.docs.length === USER_PAGE_SIZE) {
+      userCursors.value[page] = snapshot.docs[snapshot.docs.length - 1];
+      hasMoreUsers.value = true;
+    } else {
+      hasMoreUsers.value = false;
+    }
+    
+    userPage.value = page;
   } catch (error) {
     console.error('Error fetching users:', error);
   }
@@ -488,11 +484,41 @@ const updateUserRole = async (userId: string, newRole: 'admin' | 'staff' | 'cust
   try {
     await updateDoc(doc(db, 'users', userId), { role: newRole });
     toast.success('Đã cập nhật quyền người dùng');
-    await fetchUsers();
+    const userIndex = users.value.findIndex(u => u.id === userId);
+    if (userIndex !== -1) {
+      users.value[userIndex].role = newRole;
+    }
   } catch (error) {
     console.error('Error updating user role:', error);
     handleFirestoreError(error, OperationType.UPDATE, `users/${userId}`);
     toast.error('Có lỗi xảy ra khi cập nhật quyền');
+  } finally {
+    isUpdatingUser.value = false;
+  }
+};
+
+const toggleUserLock = async (userId: string, currentLockStatus: boolean) => {
+  if (!authStore.isAdmin) return;
+  if (isUpdatingUser.value) return;
+  
+  // Prevent locking oneself
+  if (userId === authStore.user?.uid) {
+    toast.error('Bạn không thể tự khóa tài khoản của mình');
+    return;
+  }
+  
+  isUpdatingUser.value = true;
+  try {
+    await updateDoc(doc(db, 'users', userId), { isLocked: !currentLockStatus });
+    toast.success(!currentLockStatus ? 'Đã khóa tài khoản' : 'Đã mở khóa tài khoản');
+    const userIndex = users.value.findIndex(u => u.id === userId);
+    if (userIndex !== -1) {
+      users.value[userIndex].isLocked = !currentLockStatus;
+    }
+  } catch (error) {
+    console.error('Error toggling user lock:', error);
+    handleFirestoreError(error, OperationType.UPDATE, `users/${userId}`);
+    toast.error('Có lỗi xảy ra khi cập nhật trạng thái');
   } finally {
     isUpdatingUser.value = false;
   }
@@ -1457,17 +1483,6 @@ const seedData = async () => {
         <div v-if="activeTab === 'users' && authStore.isAdmin" class="space-y-10">
           <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">NGƯỜI DÙNG</h2>
-            
-            <!-- User Search -->
-            <div class="w-full md:w-96 relative group">
-              <Search class="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-600 transition-colors" :size="20" />
-              <input 
-                v-model="userSearch"
-                type="text" 
-                placeholder="Tìm theo tên, email, SĐT..."
-                class="w-full pl-16 pr-6 py-5 bg-white border-none rounded-[32px] shadow-sm text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
-              />
-            </div>
           </div>
           
           <div class="bg-white rounded-[40px] shadow-sm border border-gray-100 overflow-hidden">
@@ -1479,36 +1494,29 @@ const seedData = async () => {
                     <th class="p-8 text-[10px] font-black text-gray-400 uppercase tracking-widest">Email</th>
                     <th class="p-8 text-[10px] font-black text-gray-400 uppercase tracking-widest">Số điện thoại</th>
                     <th class="p-8 text-[10px] font-black text-gray-400 uppercase tracking-widest">Vai trò</th>
-                    <th class="p-8 text-[10px] font-black text-gray-400 uppercase tracking-widest">Hành động</th>
+                    <th class="p-8 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Trạng thái</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="user in paginatedUsers" :key="user.id" class="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                  <tr v-for="user in users" :key="user.id" class="border-b border-gray-50 hover:bg-gray-50/50 transition-colors" :class="{'opacity-60': user.isLocked}">
                     <td class="p-8">
                       <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-2xl bg-orange-100 flex items-center justify-center text-orange-600 font-black">
+                        <div class="w-12 h-12 rounded-2xl flex items-center justify-center font-black" :class="user.isLocked ? 'bg-gray-100 text-gray-400' : 'bg-orange-100 text-orange-600'">
                           {{ user.displayName?.charAt(0).toUpperCase() || 'U' }}
                         </div>
-                        <span class="font-black text-gray-900 uppercase tracking-tight">{{ user.displayName }}</span>
+                        <span class="font-black text-gray-900 uppercase tracking-tight flex items-center gap-2">
+                          {{ user.displayName }}
+                          <Lock v-if="user.isLocked" :size="14" class="text-red-500" />
+                        </span>
                       </div>
                     </td>
                     <td class="p-8 text-sm font-bold text-gray-500">{{ user.email }}</td>
                     <td class="p-8 text-sm font-bold text-gray-500">{{ user.phoneNumber || '---' }}</td>
                     <td class="p-8">
-                      <span :class="[
-                        'px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest',
-                        user.role === 'admin' ? 'bg-red-100 text-red-600' : 
-                        user.role === 'staff' ? 'bg-blue-100 text-blue-600' : 
-                        'bg-green-100 text-green-600'
-                      ]">
-                        {{ user.role }}
-                      </span>
-                    </td>
-                    <td class="p-8">
                       <select 
                         :value="user.role"
                         @change="(e) => updateUserRole(user.id, (e.target as HTMLSelectElement).value as any)"
-                        :disabled="isUpdatingUser"
+                        :disabled="isUpdatingUser || user.isLocked"
                         class="p-3 bg-gray-50 border-none rounded-xl text-[10px] font-black uppercase tracking-widest focus:ring-2 focus:ring-orange-600 disabled:opacity-50"
                       >
                         <option value="customer">Customer</option>
@@ -1517,8 +1525,22 @@ const seedData = async () => {
                         <option value="admin">Admin</option>
                       </select>
                     </td>
+                    <td class="p-8 text-center">
+                      <button
+                        @click="toggleUserLock(user.id, user.isLocked)"
+                        :disabled="isUpdatingUser || user.id === authStore.user?.uid"
+                        class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50"
+                        :class="!user.isLocked ? 'bg-green-500' : 'bg-gray-300'"
+                        :title="!user.isLocked ? 'Đang hoạt động (Nhấn để khóa)' : 'Đã khóa (Nhấn để mở)'"
+                      >
+                        <span
+                          class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                          :class="!user.isLocked ? 'translate-x-6' : 'translate-x-1'"
+                        />
+                      </button>
+                    </td>
                   </tr>
-                  <tr v-if="paginatedUsers.length === 0">
+                  <tr v-if="users.length === 0">
                     <td colspan="5" class="p-20 text-center">
                       <div class="flex flex-col items-center gap-4 text-gray-400">
                         <Users :size="48" />
@@ -1531,21 +1553,21 @@ const seedData = async () => {
             </div>
 
             <!-- User Pagination -->
-            <div v-if="totalUserPages > 1" class="p-8 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+            <div v-if="userPage > 1 || hasMoreUsers" class="p-8 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
               <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                Trang {{ userPage }} / {{ totalUserPages }}
+                Trang {{ userPage }}
               </p>
               <div class="flex gap-2">
                 <button 
-                  @click="userPage--" 
+                  @click="fetchUsers(userPage - 1)" 
                   :disabled="userPage === 1"
                   class="w-10 h-10 bg-white border border-gray-200 rounded-xl flex items-center justify-center text-gray-600 disabled:opacity-50 hover:bg-gray-50 transition-all"
                 >
                   <ChevronRight class="rotate-180" :size="18" />
                 </button>
                 <button 
-                  @click="userPage++" 
-                  :disabled="userPage === totalUserPages"
+                  @click="fetchUsers(userPage + 1)" 
+                  :disabled="!hasMoreUsers"
                   class="w-10 h-10 bg-white border border-gray-200 rounded-xl flex items-center justify-center text-gray-600 disabled:opacity-50 hover:bg-gray-50 transition-all"
                 >
                   <ChevronRight :size="18" />

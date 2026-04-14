@@ -43,6 +43,16 @@ export const useAuthStore = defineStore('auth', () => {
           profile.value = newProfile;
         }
 
+        if (profile.value.isLocked) {
+          await signOut(auth);
+          user.value = null;
+          profile.value = null;
+          toast.error('Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.');
+          loading.value = false;
+          resolveReady(true);
+          return;
+        }
+
         // Redirect based on role
         if (isAdmin.value && router.currentRoute.value.path === '/') {
           router.push('/admin');
