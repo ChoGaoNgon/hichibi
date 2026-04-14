@@ -61,14 +61,32 @@ import { syncOrderToGoogleSheets } from '../services/googleSheetsService';
 const authStore = useAuthStore();
 const router = useRouter();
 const activeTab = ref('dashboard');
+
+// Pagination & Search States
+const ITEM_PAGE_SIZE = 6;
+
 const products = ref<Product[]>([]);
+const lastProductDoc = ref<any>(null);
+const hasMoreProducts = ref(true);
+
 const categories = ref<Category[]>([]);
+const lastCategoryDoc = ref<any>(null);
+const hasMoreCategories = ref(true);
+
 const vouchers = ref<any[]>([]);
+const lastVoucherDoc = ref<any>(null);
+const hasMoreVouchers = ref(true);
+
 const users = ref<any[]>([]);
 const userPage = ref(1);
 const USER_PAGE_SIZE = 5;
 const userCursors = ref<any[]>([]);
 const hasMoreUsers = ref(false);
+
+const userSearchInput = ref('');
+const activeUserSearch = ref('');
+const allFilteredUsers = ref<any[]>([]);
+const isSearchingUsers = ref(false);
 
 const loading = ref(true);
 const isDeleting = ref(false);
@@ -421,31 +439,79 @@ const generateVoucherCode = () => {
   voucherForm.value.code = code;
 };
 
-const fetchProducts = async () => {
+const fetchProducts = async (loadMore = false) => {
   if (!authStore.isAdmin) return;
   try {
-    const snapshot = await getDocs(collection(db, 'products'));
-    products.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+    let q = query(collection(db, 'products'), limit(ITEM_PAGE_SIZE));
+    if (loadMore && lastProductDoc.value) {
+      q = query(collection(db, 'products'), startAfter(lastProductDoc.value), limit(ITEM_PAGE_SIZE));
+    }
+    
+    const snapshot = await getDocs(q);
+    const newProducts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+    
+    if (loadMore) {
+      products.value = [...products.value, ...newProducts];
+    } else {
+      products.value = newProducts;
+    }
+    
+    if (snapshot.docs.length > 0) {
+      lastProductDoc.value = snapshot.docs[snapshot.docs.length - 1];
+    }
+    hasMoreProducts.value = snapshot.docs.length === ITEM_PAGE_SIZE;
   } catch (error) {
     console.error('Error fetching products:', error);
   }
 };
 
-const fetchCategories = async () => {
+const fetchCategories = async (loadMore = false) => {
   if (!authStore.isAdmin) return;
   try {
-    const snapshot = await getDocs(query(collection(db, 'categories'), orderBy('order', 'asc')));
-    categories.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
+    let q = query(collection(db, 'categories'), orderBy('order', 'asc'), limit(ITEM_PAGE_SIZE));
+    if (loadMore && lastCategoryDoc.value) {
+      q = query(collection(db, 'categories'), orderBy('order', 'asc'), startAfter(lastCategoryDoc.value), limit(ITEM_PAGE_SIZE));
+    }
+    
+    const snapshot = await getDocs(q);
+    const newCategories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
+    
+    if (loadMore) {
+      categories.value = [...categories.value, ...newCategories];
+    } else {
+      categories.value = newCategories;
+    }
+    
+    if (snapshot.docs.length > 0) {
+      lastCategoryDoc.value = snapshot.docs[snapshot.docs.length - 1];
+    }
+    hasMoreCategories.value = snapshot.docs.length === ITEM_PAGE_SIZE;
   } catch (error) {
     console.error('Error fetching categories:', error);
   }
 };
 
-const fetchVouchers = async () => {
+const fetchVouchers = async (loadMore = false) => {
   if (!authStore.isAdmin) return;
   try {
-    const snapshot = await getDocs(query(collection(db, 'vouchers'), orderBy('createdAt', 'desc')));
-    vouchers.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+    let q = query(collection(db, 'vouchers'), orderBy('createdAt', 'desc'), limit(ITEM_PAGE_SIZE));
+    if (loadMore && lastVoucherDoc.value) {
+      q = query(collection(db, 'vouchers'), orderBy('createdAt', 'desc'), startAfter(lastVoucherDoc.value), limit(ITEM_PAGE_SIZE));
+    }
+    
+    const snapshot = await getDocs(q);
+    const newVouchers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+    
+    if (loadMore) {
+      vouchers.value = [...vouchers.value, ...newVouchers];
+    } else {
+      vouchers.value = newVouchers;
+    }
+    
+    if (snapshot.docs.length > 0) {
+      lastVoucherDoc.value = snapshot.docs[snapshot.docs.length - 1];
+    }
+    hasMoreVouchers.value = snapshot.docs.length === ITEM_PAGE_SIZE;
   } catch (error) {
     console.error('Error fetching vouchers:', error);
   }
@@ -453,6 +519,16 @@ const fetchVouchers = async () => {
 
 const fetchUsers = async (page = 1) => {
   if (!authStore.isAdmin) return;
+  
+  if (isSearchingUsers.value) {
+    // Local pagination for search results
+    const start = (page - 1) * USER_PAGE_SIZE;
+    users.value = allFilteredUsers.value.slice(start, start + USER_PAGE_SIZE);
+    hasMoreUsers.value = start + USER_PAGE_SIZE < allFilteredUsers.value.length;
+    userPage.value = page;
+    return;
+  }
+
   try {
     let q = query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(USER_PAGE_SIZE));
     
@@ -473,6 +549,46 @@ const fetchUsers = async (page = 1) => {
     userPage.value = page;
   } catch (error) {
     console.error('Error fetching users:', error);
+  }
+};
+
+const searchUsers = async () => {
+  if (!authStore.isAdmin) return;
+  
+  const s = userSearchInput.value.trim().toLowerCase();
+  activeUserSearch.value = s;
+  
+  if (!s) {
+    isSearchingUsers.value = false;
+    userCursors.value = [];
+    await fetchUsers(1);
+    return;
+  }
+
+  isSearchingUsers.value = true;
+  loading.value = true;
+  try {
+    // Fetch all users to filter client-side (since Firestore lacks multi-field full-text search)
+    const snapshot = await getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc')));
+    const allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+    
+    allFilteredUsers.value = allUsers.filter(u => {
+      const nameMatch = u.displayName?.toLowerCase().includes(s);
+      const emailMatch = u.email?.toLowerCase().includes(s);
+      const phoneMatch = u.phoneNumber?.toLowerCase().includes(s);
+      const roleMatch = u.role?.toLowerCase().includes(s);
+      const statusStr = u.isLocked ? 'đã khóa' : 'hoạt động';
+      const statusMatch = statusStr.includes(s);
+      
+      return nameMatch || emailMatch || phoneMatch || roleMatch || statusMatch;
+    });
+    
+    await fetchUsers(1);
+  } catch (error) {
+    console.error('Error searching users:', error);
+    toast.error('Lỗi khi tìm kiếm người dùng');
+  } finally {
+    loading.value = false;
   }
 };
 
@@ -1377,6 +1493,15 @@ const seedData = async () => {
               </div>
             </div>
           </div>
+          
+          <div v-if="hasMoreCategories" class="flex justify-center mt-8">
+            <button 
+              @click="fetchCategories(true)"
+              class="px-8 py-4 bg-white border-2 border-gray-100 text-gray-600 rounded-3xl font-black text-sm uppercase tracking-widest hover:border-orange-600 hover:text-orange-600 transition-all"
+            >
+              Xem thêm
+            </button>
+          </div>
         </div>
 
         <!-- Products Tab -->
@@ -1420,6 +1545,15 @@ const seedData = async () => {
                 <p class="text-gray-500 text-xs font-bold uppercase tracking-widest">{{ product.category }}</p>
               </div>
             </div>
+          </div>
+          
+          <div v-if="hasMoreProducts" class="flex justify-center mt-8">
+            <button 
+              @click="fetchProducts(true)"
+              class="px-8 py-4 bg-white border-2 border-gray-100 text-gray-600 rounded-3xl font-black text-sm uppercase tracking-widest hover:border-orange-600 hover:text-orange-600 transition-all"
+            >
+              Xem thêm
+            </button>
           </div>
         </div>
 
@@ -1477,12 +1611,41 @@ const seedData = async () => {
               </div>
             </div>
           </div>
+          
+          <div v-if="hasMoreVouchers" class="flex justify-center mt-8">
+            <button 
+              @click="fetchVouchers(true)"
+              class="px-8 py-4 bg-white border-2 border-gray-100 text-gray-600 rounded-3xl font-black text-sm uppercase tracking-widest hover:border-orange-600 hover:text-orange-600 transition-all"
+            >
+              Xem thêm
+            </button>
+          </div>
         </div>
 
         <!-- Users Tab -->
         <div v-if="activeTab === 'users' && authStore.isAdmin" class="space-y-10">
           <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">NGƯỜI DÙNG</h2>
+            
+            <!-- User Search -->
+            <div class="w-full md:w-[500px] flex gap-2">
+              <div class="relative group flex-1">
+                <Search class="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-600 transition-colors" :size="20" />
+                <input 
+                  v-model="userSearchInput"
+                  @keyup.enter="searchUsers"
+                  type="text" 
+                  placeholder="Tìm tên, email, SĐT, vai trò, trạng thái..."
+                  class="w-full pl-16 pr-6 py-4 bg-white border-none rounded-[32px] shadow-sm text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
+                />
+              </div>
+              <button 
+                @click="searchUsers"
+                class="px-8 py-4 bg-gray-900 text-white rounded-[32px] font-black text-sm uppercase tracking-widest hover:bg-orange-600 transition-colors shadow-sm"
+              >
+                Tìm
+              </button>
+            </div>
           </div>
           
           <div class="bg-white rounded-[40px] shadow-sm border border-gray-100 overflow-hidden">
