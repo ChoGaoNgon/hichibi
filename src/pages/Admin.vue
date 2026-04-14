@@ -57,6 +57,7 @@ import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 import { syncOrderToGoogleSheets } from '../services/googleSheetsService';
+import AdminCalendar from '../components/AdminCalendar.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -1193,6 +1194,7 @@ const seedData = async () => {
               { id: 'vouchers', name: 'Mã giảm giá', icon: Ticket },
               { id: 'users', name: 'Người dùng', icon: Users },
               { id: 'settings', name: 'Cửa hàng', icon: Store },
+              { id: 'calendar', name: 'Lịch làm việc', icon: Calendar },
               { id: 'cache', name: 'Quản lý Cache', icon: HardDrive }
             ] : []),
           ]"
@@ -1786,6 +1788,11 @@ const seedData = async () => {
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- Calendar Tab -->
+        <div v-if="activeTab === 'calendar' && authStore.isAdmin">
+          <AdminCalendar />
         </div>
 
         <!-- Settings Tab -->
