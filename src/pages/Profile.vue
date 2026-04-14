@@ -43,6 +43,14 @@ const handleSave = async () => {
     return;
   }
   
+  if (form.value.phoneNumber) {
+    const phoneRegex = /^0\d{9}$/;
+    if (!phoneRegex.test(form.value.phoneNumber)) {
+      toast.error('Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại bắt đầu bằng 0 và có 10 chữ số.');
+      return;
+    }
+  }
+  
   isSaving.value = true;
   try {
     await authStore.updateProfile(form.value);
@@ -157,7 +165,7 @@ const handleLogout = async () => {
                 <input
                   type="tel"
                   v-model="form.phoneNumber"
-                  placeholder="Nhập số điện thoại"
+                  placeholder="Số điện thoại (VD: 0912345678)"
                   class="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-[#C04D1E] transition-all"
                 />
               </div>

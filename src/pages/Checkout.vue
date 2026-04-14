@@ -165,6 +165,12 @@ const handleSubmit = async () => {
       error.value = 'Vui lòng điền đầy đủ thông tin liên hệ và địa chỉ.';
       return;
     }
+    
+    const phoneRegex = /^0\d{9}$/;
+    if (!phoneRegex.test(customerPhone.value)) {
+      error.value = 'Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại bắt đầu bằng 0 và có 10 chữ số.';
+      return;
+    }
   }
 
   isSubmitting.value = true;
@@ -310,7 +316,7 @@ const handleSubmit = async () => {
               <input
                 :required="!authStore.isTablet"
                 type="tel"
-                placeholder="Số điện thoại"
+                placeholder="Số điện thoại (VD: 0912345678)"
                 v-model="customerPhone"
                 class="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-[#C04D1E] transition-all"
               />
