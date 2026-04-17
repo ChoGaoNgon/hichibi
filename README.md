@@ -18,7 +18,7 @@ Hệ thống chia làm 4 vai trò chính:
   - Cấu hình **Google Sheets Sync** để tự động đồng bộ đơn hàng sang bảng tính.
   - Quản lý **Google Calendar** để tạo, xóa và theo dõi lịch làm việc, sự kiện lặp lại, mời khách tham dự.
   - Quản lý Cache hệ thống và Khởi tạo dữ liệu mẫu (Seed Data).
-
+     
 - **Staff (Nhân viên)**:
   - Quản lý đơn hàng: Tiếp nhận, thay đổi trạng thái xử lý (Chờ xử lý, Đang pha chế, Đang giao, Hoàn tất, Hủy).
   - Thay đổi phương thức vận chuyển cho đơn hàng.
