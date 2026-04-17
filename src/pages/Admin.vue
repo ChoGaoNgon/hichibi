@@ -487,15 +487,27 @@ const fetchProducts = async (loadMore = false) => {
   }
 };
 
-const fetchCategories = async () => {
+const fetchCategories = async (loadMore = false) => {
   if (!authStore.isAdmin) return;
   try {
-    const q = query(collection(db, 'categories'), orderBy('order', 'asc'));
+    let q = query(collection(db, 'categories'), orderBy('order', 'asc'), limit(ITEM_PAGE_SIZE));
+    if (loadMore && lastCategoryDoc.value) {
+      q = query(collection(db, 'categories'), orderBy('order', 'asc'), startAfter(lastCategoryDoc.value), limit(ITEM_PAGE_SIZE));
+    }
     
     const snapshot = await getDocs(q);
-    categories.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
+    const newCategories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
     
-    hasMoreCategories.value = false;
+    if (loadMore) {
+      categories.value = [...categories.value, ...newCategories];
+    } else {
+      categories.value = newCategories;
+    }
+    
+    if (snapshot.docs.length > 0) {
+      lastCategoryDoc.value = snapshot.docs[snapshot.docs.length - 1];
+    }
+    hasMoreCategories.value = snapshot.docs.length === ITEM_PAGE_SIZE;
   } catch (error) {
     console.error('Error fetching categories:', error);
   }
@@ -732,20 +744,16 @@ const saveVoucher = async () => {
 
     if (editingVoucher.value?.id) {
       await updateDoc(doc(db, 'vouchers', editingVoucher.value.id), data);
-      const index = vouchers.value.findIndex(v => v.id === editingVoucher.value!.id);
-      if (index !== -1) {
-        vouchers.value[index] = { ...vouchers.value[index], ...data } as Voucher;
-      }
       toast.success('Đã cập nhật mã giảm giá');
     } else {
-      const docRef = await addDoc(collection(db, 'vouchers'), {
+      await addDoc(collection(db, 'vouchers'), {
         ...data,
         usedCount: 0,
         createdAt: Timestamp.now()
       });
-      vouchers.value.unshift({ id: docRef.id, ...data, usedCount: 0, createdAt: Timestamp.now() } as Voucher);
       toast.success('Đã tạo mã giảm giá mới');
     }
+    await fetchVouchers();
     closeVoucherModal();
   } catch (error) {
     console.error('Error saving voucher', error);
@@ -844,19 +852,15 @@ const saveProduct = async () => {
 
     if (editingProduct.value?.id) {
       await updateDoc(doc(db, 'products', editingProduct.value.id), data);
-      const index = products.value.findIndex(p => p.id === editingProduct.value!.id);
-      if (index !== -1) {
-        products.value[index] = { ...products.value[index], ...data } as Product;
-      }
       toast.success('Đã cập nhật sản phẩm');
     } else {
-      const docRef = await addDoc(collection(db, 'products'), {
+      await addDoc(collection(db, 'products'), {
         ...data,
         createdAt: Timestamp.now()
       });
-      products.value.unshift({ id: docRef.id, ...data, createdAt: Timestamp.now() } as Product);
       toast.success('Đã thêm sản phẩm mới');
     }
+    await fetchProducts();
     triggerAutoCacheUpdate();
     closeProductModal();
   } catch (error) {
@@ -922,20 +926,15 @@ const saveCategory = async () => {
 
     if (editingCategory.value?.id) {
       await updateDoc(doc(db, 'categories', editingCategory.value.id), data);
-      const index = categories.value.findIndex(c => c.id === editingCategory.value!.id);
-      if (index !== -1) {
-        categories.value[index] = { ...categories.value[index], ...data } as Category;
-      }
       toast.success('Đã cập nhật danh mục');
     } else {
-      const docRef = await addDoc(collection(db, 'categories'), {
+      await addDoc(collection(db, 'categories'), {
         ...data,
         createdAt: Timestamp.now()
       });
-      categories.value.push({ id: docRef.id, ...data, createdAt: Timestamp.now() } as Category);
-      categories.value.sort((a, b) => a.order - b.order);
       toast.success('Đã thêm danh mục mới');
     }
+    await fetchCategories();
     triggerAutoCacheUpdate();
     closeCategoryModal();
   } catch (error) {
@@ -964,13 +963,9 @@ const executeDelete = async () => {
     const typeName = type === 'product' ? 'sản phẩm' : type === 'category' ? 'danh mục' : 'mã giảm giá';
     toast.success(`Đã xóa ${typeName}`);
     
-    if (type === 'product') {
-      products.value = products.value.filter(p => p.id !== itemToDelete.value!.id);
-    } else if (type === 'category') {
-      categories.value = categories.value.filter(c => c.id !== itemToDelete.value!.id);
-    } else if (type === 'voucher') {
-      vouchers.value = vouchers.value.filter(v => v.id !== itemToDelete.value!.id);
-    }
+    if (type === 'product') await fetchProducts();
+    else if (type === 'category') await fetchCategories();
+    else if (type === 'voucher') await fetchVouchers();
 
     triggerAutoCacheUpdate();
     isDeleteConfirmOpen.value = false;
@@ -1547,6 +1542,15 @@ const seedData = async () => {
                 <p class="text-gray-400 text-[10px] font-black uppercase tracking-widest mt-1">Slug: {{ cat.slug }} • Thứ tự: {{ cat.order }}</p>
               </div>
             </div>
+          </div>
+          
+          <div v-if="hasMoreCategories" class="flex justify-center mt-8">
+            <button 
+              @click="fetchCategories(true)"
+              class="px-8 py-4 bg-white border-2 border-gray-100 text-gray-600 rounded-3xl font-black text-sm uppercase tracking-widest hover:border-orange-600 hover:text-orange-600 transition-all"
+            >
+              Xem thêm
+            </button>
           </div>
         </div>
 
