@@ -4,7 +4,6 @@ import { useRoute } from 'vue-router';
 import { useAuthStore } from './stores/auth';
 import { Toaster, toast } from 'vue-sonner';
 import Navbar from './components/Navbar.vue';
-import Footer from './components/Footer.vue';
 import WebViewGuard from './components/WebViewGuard.vue';
 import { db, collection, query, where, onSnapshot } from './firebase';
 import type { Order, OrderStatus } from './types';
@@ -100,7 +99,6 @@ onUnmounted(() => {
         </transition>
       </router-view>
     </main>
-    <Footer v-if="route.path !== '/' && route.path !== '/checkout' && route.path !== '/cart' && route.path !== '/tablet'" class="print:hidden" />
   </div>
 </template>
 
