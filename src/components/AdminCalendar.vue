@@ -10,7 +10,8 @@ import {
   AlignLeft,
   Users,
   Repeat,
-  Trash2
+  Trash2,
+  Info
 } from 'lucide-vue-next';
 import { 
   format, 
@@ -47,6 +48,10 @@ const showDeleteModal = ref(false);
 const eventToDelete = ref<any>(null);
 const isDeleting = ref(false);
 
+// Detail Modal state
+const showDetailModal = ref(false);
+const eventDetails = ref<any>(null);
+
 const newEvent = ref({
   summary: '',
   description: '',
@@ -55,8 +60,29 @@ const newEvent = ref({
   startTime: '09:00',
   endTime: '10:00',
   isRecurring: false,
-  recurringDays: [] as string[]
+  recurringDays: [] as string[],
+  colorId: 'default'
 });
+
+const eventColors: Record<string, { bg: string, text: string }> = {
+  '1': { bg: 'bg-[#7986cb]', text: 'text-white' }, // Lavender
+  '2': { bg: 'bg-[#33b679]', text: 'text-white' }, // Sage
+  '3': { bg: 'bg-[#8e24aa]', text: 'text-white' }, // Grape
+  '4': { bg: 'bg-[#e67c73]', text: 'text-white' }, // Flamingo
+  '5': { bg: 'bg-[#f6bf26]', text: 'text-gray-900' }, // Banana
+  '6': { bg: 'bg-[#f4511e]', text: 'text-white' }, // Tangerine
+  '7': { bg: 'bg-[#039be5]', text: 'text-white' }, // Peacock
+  '8': { bg: 'bg-[#616161]', text: 'text-white' }, // Graphite
+  '9': { bg: 'bg-[#3f51b5]', text: 'text-white' }, // Blueberry
+  '10': { bg: 'bg-[#0b8043]', text: 'text-white' }, // Basil
+  '11': { bg: 'bg-[#d50000]', text: 'text-white' }, // Tomato
+  'default': { bg: 'bg-orange-50', text: 'text-orange-700' }
+};
+
+const getEventColorClasses = (colorId?: string) => {
+  const color = eventColors[colorId || 'default'] || eventColors['default'];
+  return `${color.bg} ${color.text} ${(!colorId || colorId === 'default') ? 'border border-orange-100' : ''}`;
+};
 
 const weekDays = [
   { label: 'T2', value: 'MO' },
@@ -197,8 +223,19 @@ const closeAddModal = () => {
     startTime: '09:00',
     endTime: '10:00',
     isRecurring: false,
-    recurringDays: []
+    recurringDays: [],
+    colorId: 'default'
   };
+};
+
+const openDetailModal = (event: any) => {
+  eventDetails.value = event;
+  showDetailModal.value = true;
+};
+
+const closeDetailModal = () => {
+  showDetailModal.value = false;
+  eventDetails.value = null;
 };
 
 const openDeleteModal = (event: any) => {
@@ -295,6 +332,10 @@ const handleAddEvent = async () => {
       eventBody.recurrence = [rrule];
     }
     
+    if (newEvent.value.colorId && newEvent.value.colorId !== 'default') {
+      eventBody.colorId = newEvent.value.colorId;
+    }
+    
     const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=all', {
       method: 'POST',
       headers: {
@@ -389,10 +430,10 @@ const handleAddEvent = async () => {
               <div 
                 v-for="event in day.events" 
                 :key="event.id"
-                @click.stop
+                @click.stop="openDetailModal(event)"
                 @contextmenu.prevent.stop="openDeleteModal(event)"
-                class="text-[9px] font-bold bg-orange-50 text-orange-700 px-2 py-1.5 rounded-lg truncate border border-orange-100 cursor-context-menu"
-                :title="event.summary + ' (Chuột phải để xóa)'"
+                :class="['text-[9px] font-bold px-2 py-1.5 rounded-lg truncate cursor-pointer', getEventColorClasses(event.colorId)]"
+                :title="event.summary + ' (Click để xem, Chuột phải để xóa)'"
               >
                 {{ formatTime(event.start.dateTime || event.start.date) }} - {{ event.summary }}
               </div>
@@ -528,6 +569,26 @@ const handleAddEvent = async () => {
           </div>
           
           <div class="space-y-1.5">
+            <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Màu sự kiện</label>
+            <div class="flex flex-wrap gap-2">
+              <label 
+                v-for="(color, id) in eventColors" 
+                :key="id"
+                class="relative w-8 h-8 rounded-full cursor-pointer flex items-center justify-center transition-transform hover:scale-110"
+                :class="[color.bg, newEvent.colorId === id ? 'ring-2 ring-offset-2 ring-orange-500' : '']"
+              >
+                <input 
+                  type="radio" 
+                  name="colorId"
+                  :value="id" 
+                  v-model="newEvent.colorId" 
+                  class="sr-only" 
+                />
+              </label>
+            </div>
+          </div>
+          
+          <div class="space-y-1.5">
             <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Mô tả (Tùy chọn)</label>
             <div class="relative">
               <AlignLeft class="absolute left-3 top-3 text-gray-400" :size="16" />
@@ -606,6 +667,68 @@ const handleAddEvent = async () => {
               Hủy
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Event Detail Modal -->
+    <div v-if="showDetailModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="closeDetailModal"></div>
+      <div class="relative bg-white w-full max-w-sm rounded-[32px] p-6 shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+        <div class="flex justify-between items-start mb-6 shrink-0">
+          <div class="flex flex-col">
+            <h3 class="text-xl font-black text-gray-900 uppercase tracking-tighter pr-4">{{ eventDetails?.summary || 'Không có tiêu đề' }}</h3>
+            <div class="text-sm font-medium text-gray-500 mt-1 flex items-center gap-1">
+              <Clock :size="14" />
+              <span v-if="eventDetails?.start?.dateTime">
+                {{ format(parseISO(eventDetails.start.dateTime), 'dd/MM/yyyy HH:mm') }} 
+                <span v-if="eventDetails?.end?.dateTime"> - {{ format(parseISO(eventDetails.end.dateTime), 'HH:mm') }}</span>
+              </span>
+              <span v-else>
+                {{ eventDetails?.start?.date ? format(parseISO(eventDetails.start.date), 'dd/MM/yyyy') : 'Cả ngày' }}
+              </span>
+            </div>
+            
+            <div v-if="eventDetails?.recurrence" class="text-xs font-bold text-orange-600 mt-2 flex items-center gap-1">
+              <Repeat :size="12" /> Lặp lại hàng tuần
+            </div>
+          </div>
+          <button @click="closeDetailModal" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200 shrink-0">
+            <XCircle :size="20" />
+          </button>
+        </div>
+        
+        <div class="space-y-5 overflow-y-auto pr-2 no-scrollbar flex-grow">
+          <div v-if="eventDetails?.description" class="space-y-1.5">
+            <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+              <AlignLeft :size="12" /> Mô tả
+            </h4>
+            <p class="text-sm font-medium text-gray-700 whitespace-pre-line">{{ eventDetails.description }}</p>
+          </div>
+          
+          <div v-if="eventDetails?.attendees && eventDetails.attendees.length > 0" class="space-y-1.5">
+            <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+              <Users :size="12" /> Khách mời
+            </h4>
+            <div class="flex flex-col gap-1">
+              <div v-for="(attendee, index) in eventDetails.attendees" :key="index" class="text-xs font-medium text-gray-700 bg-gray-50 p-2 rounded-lg border border-gray-100">
+                {{ attendee.email }}
+                <span v-if="attendee.responseStatus === 'accepted'" class="text-green-600 font-bold ml-1">(Đã nhận lời)</span>
+                <span v-else-if="attendee.responseStatus === 'declined'" class="text-red-500 font-bold ml-1">(Từ chối)</span>
+                <span v-else-if="attendee.responseStatus === 'needsAction'" class="text-gray-400 font-bold ml-1">(Chưa phản hồi)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="pt-4 mt-4 border-t border-gray-100 shrink-0 flex gap-2">
+          <button 
+            @click="() => { const event = eventDetails; closeDetailModal(); openDeleteModal(event); }"
+            class="flex-1 py-3.5 bg-red-50 text-red-600 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-red-100 transition-all flex items-center justify-center gap-2"
+          >
+            <Trash2 :size="16" />
+            Xóa sự kiện
+          </button>
         </div>
       </div>
     </div>
