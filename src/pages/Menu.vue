@@ -265,7 +265,7 @@ const selectDeliveryMethod = async (method: 'delivery' | 'pickup' | 'dine-in') =
     <!-- Main Content Area -->
     <div class="flex flex-grow overflow-hidden">
       <!-- Left Sidebar (Categories) -->
-      <aside class="w-24 bg-[#FFF1ED] flex flex-col items-center py-6 gap-8 overflow-y-auto border-r border-orange-100/50 no-scrollbar">
+      <aside class="w-24 bg-[#FFF1ED] flex flex-col items-center pt-6 pb-32 gap-8 overflow-y-auto border-r border-orange-100/50 no-scrollbar">
         <button
           v-if="groupedProducts['trending']"
           @click="scrollToCategory('trending')"
