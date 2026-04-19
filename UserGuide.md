@@ -28,9 +28,10 @@ Màn hình khách hàng (`/`) là giao diện mặc định mà mọi người d
 - Tại màn hình thanh toán, chỉ định cách khách muốn lấy hàng: `Giao hàng tận nơi`, `Đến lấy` hay `Tại quán`. Hệ thống bắt buộc bạn điền địa chỉ hoặc liên hệ nếu đang ở xa, ngoại trừ trường hợp chọn "Tại quán".
 - Lựa chọn hình thức thanh toán đa dạng (Tiền mặt, MoMo, ZaloPay, VietQR...). Nhấn Đặt hàng. 
 
-### D. Lịch sử đơn và Theo dõi đơn
+### D. Lịch sử đơn và Theo dõi đơn (Live Tracking)
 - Trượt mở Menu cạnh trái hoặc vào "Lịch sử mua hàng" để xem các đơn hàng của mình.
-- Màn hình Lịch sử tích hợp nút "Làm mới (Refresh vòng xoay)". Hãy liên tục nhấn nút này để cập nhật trạng thái đơn mà không cần phải tải lại cả trang khi đợi quán pha chế báo hoàn tất.
+- **Theo dõi Thông minh siêu tốc (Auto-Live):** Đừng lo phải bấm tải lại liên tục! Ngay khi bạn đặt hàng, hệ thống ngầm theo dõi liên tục 2 đơn mới nhất của bạn một cách tối ưu nhất. Khi nhân viên quán chuyển trạng thái sang "Đang pha chế" hay "Đang giao", điện thoại của bạn sẽ tự động nhảy thông báo (Toast) và Màn hình lịch sử lập tức đổi màu Trạng thái thẻ đơn hàng ngay trước mắt bạn. Trải nghiệm không gian đoạn!
+- Tính năng này sẽ tự ngủ đông khi đơn đã cũ và rơi vào "Hoàn tất" hoặc "Bị hủy". Nếu đang xem các đơn ở mốc tháng trước, bạn có thể tự bấm nút "Làm mới (Refresh vòng xoay)" trên từng đơn để ép hệ thống tải trạng thái mới nhất cho riêng đơn đó bất cứ khi nào bạn muốn.
 
 ---
 
@@ -53,10 +54,12 @@ Màn hình khách hàng (`/`) là giao diện mặc định mà mọi người d
 
 Khu vực bảo mật cao cấp (Domain `/admin`), yêu cầu phải có Role Admin/Staff thiết lập. Tất cả quản lý xoay quanh các tab nội bộ bên trong trang quản trị.
 
-### Tính năng Tổng quan Dashboard
-Bảng điều khiển mặc định có hai chế độ xem (View Mode):
-- **Firebase/System View**: Chế độ mặc định với bảng thống kê doanh thu hôm nay, số đơn, đơn chờ và bảng đơn hàng mới nhất.
-- **Google Sheets Dashboard**: Tính năng vô cùng mạnh mẽ, đồng bộ trực tiếp ra Google Sheet (do Admin điều chỉnh gán url ở Cấu hình Cửa hàng). 
+### Tính năng Tổng quan Dashboard (Thống kê Zero-Read)
+Hệ thống tích hợp một Dashboard báo cáo nâng cao (sử dụng 100% công nghệ HTML từ Google Apps Script dội thẳng qua `iframe` trên web). Điểm thần thông minh của tính năng này là bạn có thể xem doanh thu của cả nghìn đơn mà hệ thống không tốn một chút chi phí bộ đọc (Reads) Database nào cả do dữ liệu được phân tích chéo từ Google Sheet.
+- **Bộ lọc thời gian linh hoạt:** Lựa chọn trực tiếp "Từ ngày" và "Đến ngày" trên giao diện.
+- **Chỉ số trọng tâm (KPI):** Cung cấp tức thời "Tổng doanh thu", "Số đơn hoàn thành" và "Số đơn đang chờ" của khoảng thời gian vừa chọn.
+- **Biểu đồ Cực đại:** Hệ thống tự vẽ Biểu đồ đường/cột thể hiện mức độ tăng trưởng doanh thu của quán theo chu kỳ.
+- **Bảng dữ liệu (Data Table):** Tóm tắt doanh thu chi tiết theo từng ngày trong phạm vi thời điểm đã thiết lập để đối chiếu dễ dàng.
 
 ### Quản lý Đơn hàng
 - Tab "Đơn Hàng" chứa danh sách toàn bộ các hoạt động mua bán của chuỗi. Cung cấp bộ lọc thông minh (Lọc theo trạng thái, lọc theo PT Giao).

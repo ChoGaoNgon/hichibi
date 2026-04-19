@@ -12,7 +12,7 @@ Hệ thống chia làm 4 vai trò chính:
   - Quản lý danh mục sản phẩm (Hỗ trợ tìm kiếm nhanh).
   - Quản lý mã giảm giá (Vouchers) với các điều kiện áp dụng.
   - Quản lý người dùng và phân quyền (Admin, Staff, Tablet, Customer).
-  - Xem báo cáo doanh thu, thống kê đơn hàng theo ngày/tuần/tháng.
+  - Xem Báo cáo/Thống kê nâng cao (Zero-read Analytics) tích hợp Google Apps Script qua Iframe: Hiển thị bộ lọc ngày, KPI (Doanh thu, đơn hoàn thành, đơn chờ), biểu đồ tăng trưởng và bảng chi tiết doanh thu thẳng trên web mà không tốn chi phí Firestore Reads.
   - Cấu hình thông tin cửa hàng (Tên, địa chỉ, SĐT, mạng xã hội).
   - Cấu hình **Telegram Bot** để nhận thông báo đơn hàng mới.
   - Cấu hình **Google Sheets Sync** để tự động đồng bộ đơn hàng sang bảng tính.
@@ -21,7 +21,7 @@ Hệ thống chia làm 4 vai trò chính:
   - Khởi tạo dữ liệu mẫu (Seed Data).
 
 - **Staff (Nhân viên)**:
-  - Quản lý đơn hàng: Tiếp nhận, thay đổi trạng thái xử lý bằng cơ chế Fetched Data thông minh. Không sử dụng Real-time Listener để tiết kiệm Reads. Mọi tác vụ được tải theo yêu cầu thủ công qua các nút bấm Làm Mới.
+  - Quản lý đơn hàng: Xử lý thao tác với tốc độ tức thời. Danh sách đơn lấy theo cơ chế Fetched Data chủ động qua các nút Làm mới (Refresh) nhằm tiết kiệm giới hạn đọc (Reads).
   - Thay đổi phương thức vận chuyển cho đơn hàng.
   - In hóa đơn (Receipt) cho khách hàng chuyên nghiệp.
   - Nhận thông báo tức thời qua Telegram khi có đơn hàng mới.
@@ -38,7 +38,8 @@ Hệ thống chia làm 4 vai trò chính:
   - Tùy chỉnh sản phẩm (Size, Toppings).
   - Thêm vào giỏ hàng, áp dụng mã giảm giá.
   - Đặt hàng với 3 phương thức: Giao hàng tận nơi, Đến lấy mang đi, Dùng tại quán.
-  - Xem lịch sử đơn hàng cá nhân và trạng thái đơn hàng thời gian thực.
+  - Tích hợp **Micro Real-time Tracking**: Theo dõi trực tiếp tiến trình 2 đơn hàng mới nhất qua màn hình và thông báo (Toast) hoàn toàn tự động, ngay tức thì (Real-time).
+  - Xem lịch sử đơn hàng cá nhân chi tiết.
 
 ## 3. Hướng dẫn cài đặt (Setup) từ đầu
 

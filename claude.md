@@ -17,8 +17,9 @@ A multi-platform (Mobile, Tablet, Desktop) web application for ordering and mana
 ## 3. Architecture & Strict Paradigms
 
 ### A. Database Reads & Cost Optimization (CRITICAL)
-- **NO GLOBAL LISTENERS:** We have explicitly removed global `onSnapshot` real-time listeners to avoid excessive Firestore read costs. **Do NOT** implement `onSnapshot` unless explicitly requested.
-- **On-Demand Fetching:** Use `getDocs()`, `getDoc()`, and manual "Refresh" buttons (icon-only `RefreshCw`) for fetching data. 
+- **HYBRID FETCHING / MICRO REAL-TIME:** We generally avoid broad `onSnapshot` global listeners to save Firestore read costs. However, there is ONE highly optimized exception: A limited global listener in `App.vue` tracks ONLY the top 2 newest active orders (`limit(2)`) for the logged-in user. 
+- **Event-Driven Reactivity:** This `limit(2)` listener ignores terminal states locally (`completed`, `cancelled`) and dispatches a `CustomEvent('order-status-updated')` on the `window`. Components like `Orders.vue` listen to this event to reactively update the UI and fire Toast notifications without refetching large lists.
+- **On-Demand Fetching:** For full lists (Admin dashboards, full order histories, etc.), use `getDocs()`, `getDoc()`, and manual "Refresh" buttons (icon-only `RefreshCw`). **Do NOT** implement new `onSnapshot` routines without explicit permission and strict limits.
 - **Offline Cache System:** The Customer Menu heavily relies on `localStorage`. The system fetches a `lastUpdated` timestamp from the `settings/cache_info` document. The client compares this timestamp with its local version and only re-fetches the entire products/categories collections if the server timestamp is newer.
 
 ### B. UI/UX Conventions
