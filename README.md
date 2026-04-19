@@ -8,8 +8,8 @@ Hệ thống chia làm 4 vai trò chính:
 
 - **Admin (Quản trị viên)**:
   - Toàn quyền quản lý hệ thống.
-  - Quản lý sản phẩm (thêm, sửa, xóa, ghi chú).
-  - Quản lý danh mục sản phẩm.
+  - Quản lý sản phẩm (thêm, sửa, xóa, ghi chú). Tích hợp tìm kiếm thông minh và lọc theo danh mục.
+  - Quản lý danh mục sản phẩm (Hỗ trợ tìm kiếm nhanh).
   - Quản lý mã giảm giá (Vouchers) với các điều kiện áp dụng.
   - Quản lý người dùng và phân quyền (Admin, Staff, Tablet, Customer).
   - Xem báo cáo doanh thu, thống kê đơn hàng theo ngày/tuần/tháng.
@@ -17,10 +17,11 @@ Hệ thống chia làm 4 vai trò chính:
   - Cấu hình **Telegram Bot** để nhận thông báo đơn hàng mới.
   - Cấu hình **Google Sheets Sync** để tự động đồng bộ đơn hàng sang bảng tính.
   - Quản lý **Google Calendar** để tạo, xóa và theo dõi lịch làm việc, sự kiện lặp lại, mời khách tham dự.
-  - Quản lý Cache hệ thống và Khởi tạo dữ liệu mẫu (Seed Data).
+  - Quản lý **Cache hệ thống** giúp tối ưu hóa chi phí đọc Database bên Firestore một cách chủ động hoặc tự động.
+  - Khởi tạo dữ liệu mẫu (Seed Data).
 
 - **Staff (Nhân viên)**:
-  - Quản lý đơn hàng: Tiếp nhận, thay đổi trạng thái xử lý (Chờ xử lý, Đang pha chế, Đang giao, Hoàn tất, Hủy).
+  - Quản lý đơn hàng: Tiếp nhận, thay đổi trạng thái xử lý bằng cơ chế Fetched Data thông minh. Không sử dụng Real-time Listener để tiết kiệm Reads. Mọi tác vụ được tải theo yêu cầu thủ công qua các nút bấm Làm Mới.
   - Thay đổi phương thức vận chuyển cho đơn hàng.
   - In hóa đơn (Receipt) cho khách hàng chuyên nghiệp.
   - Nhận thông báo tức thời qua Telegram khi có đơn hàng mới.
