@@ -385,7 +385,8 @@ onMounted(async () => {
     fetchCategories(),
     fetchVouchers(),
     fetchUsers(),
-    fetchStoreInfo()
+    fetchStoreInfo(),
+    fetchCacheConfig()
   ]);
   
   if (dashboardViewMode.value === 'firebase') {
@@ -1036,7 +1037,7 @@ const executeStatusUpdate = async () => {
       }
     }
 
-    toast.success(`Đã cập nhật trạng thái đơn hàng thành ${status}`);
+    toast.success(`Đã cập nhật trạng thái đơn hàng thành ${getStatusLabel(status)}`);
     
     // Sync to Google Sheets on every status change
     syncOrderToGoogleSheets(orders.value[orderIndex]);
@@ -1101,6 +1102,18 @@ const getStatusIcon = (status: OrderStatus) => {
     case 'completed': return CheckCircle;
     case 'cancelled': return XCircle;
     default: return AlertCircle;
+  }
+};
+
+const getStatusLabel = (status: OrderStatus | undefined) => {
+  if (!status) return '';
+  switch (status) {
+    case 'pending': return 'Chờ xử lý';
+    case 'processing': return 'Đang pha chế';
+    case 'delivering': return 'Đang giao';
+    case 'completed': return 'Đã hoàn thành';
+    case 'cancelled': return 'Đã hủy';
+    default: return status;
   }
 };
 
@@ -1335,7 +1348,7 @@ const seedData = async () => {
                       <td class="py-6 px-4 font-black text-gray-900 tracking-tighter">{{ (order.totalAmount || 0).toLocaleString() }}đ</td>
                       <td class="py-6 px-4">
                         <span :class="['px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest', getStatusColor(order.status)]">
-                          {{ order.status }}
+                          {{ getStatusLabel(order.status) }}
                         </span>
                       </td>
                       <td class="py-6 px-4 text-[10px] text-gray-400 font-bold uppercase tracking-widest">
@@ -1402,7 +1415,7 @@ const seedData = async () => {
                       <span class="text-2xl font-black text-orange-600 tracking-tighter">#{{ order.id.slice(-8) }}</span>
                       <span :class="['px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2', getStatusColor(order.status)]">
                         <component :is="getStatusIcon(order.status)" :size="14" />
-                        {{ order.status }}
+                        {{ getStatusLabel(order.status) }}
                       </span>
                     </div>
                     <p class="text-gray-400 text-[10px] font-black uppercase tracking-widest">
@@ -1495,7 +1508,7 @@ const seedData = async () => {
                     class="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-50"
                     :class="order.status === status ? getStatusColor(status) : 'bg-white border border-gray-100 text-gray-400 hover:bg-gray-50'"
                   >
-                    {{ status }}
+                    {{ getStatusLabel(status) }}
                   </button>
                 </div>
               </div>
@@ -2316,7 +2329,7 @@ const seedData = async () => {
           </div>
           <div class="space-y-2">
             <h3 class="text-2xl font-black text-gray-900 uppercase tracking-tighter">Xác nhận thay đổi?</h3>
-            <p class="text-gray-500 font-medium text-sm">Bạn có chắc chắn muốn chuyển trạng thái đơn hàng này thành <strong class="text-orange-600 uppercase">{{ pendingStatusUpdate?.status }}</strong>?</p>
+            <p class="text-gray-500 font-medium text-sm">Bạn có chắc chắn muốn chuyển trạng thái đơn hàng này thành <strong class="text-orange-600 uppercase">{{ getStatusLabel(pendingStatusUpdate?.status) }}</strong>?</p>
           </div>
           <div class="space-y-4">
             <button 
