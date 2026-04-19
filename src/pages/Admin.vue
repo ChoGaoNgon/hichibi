@@ -1246,20 +1246,20 @@ const seedData = async () => {
       </div>
 
       <div v-else class="max-w-6xl mx-auto space-y-8">
-        <div class="flex flex-wrap justify-end gap-3">
-          <button 
-            @click="refreshData" 
-            :disabled="isRefreshing"
-            class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-black uppercase tracking-widest text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50"
-          >
-            <RefreshCw :size="14" :class="{ 'animate-spin': isRefreshing }" /> Làm mới dữ liệu
-          </button>
-        </div>
-
         <!-- Dashboard Tab -->
         <div v-if="activeTab === 'dashboard'" class="space-y-16">
           <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-            <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">TỔNG QUAN</h2>
+            <div class="flex items-center gap-4">
+              <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">TỔNG QUAN</h2>
+              <button 
+                @click="refreshData" 
+                :disabled="isRefreshing"
+                class="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-orange-600 hover:bg-orange-50 hover:border-orange-100 transition-all disabled:opacity-50"
+                title="Làm mới dữ liệu"
+              >
+                <RefreshCw :size="16" :class="{ 'animate-spin': isRefreshing }" />
+              </button>
+            </div>
             
             <div class="flex flex-wrap items-center gap-4">
               <div v-if="storeInfo.googleSheetsDashboardUrl" class="flex bg-gray-100 p-1 rounded-2xl">
@@ -1364,11 +1364,21 @@ const seedData = async () => {
 
         <!-- Orders Tab -->
         <div v-if="activeTab === 'orders'" class="space-y-10">
-          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-            <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">QUẢN LÝ ĐƠN HÀNG</h2>
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+            <div class="flex items-center gap-4">
+              <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">QUẢN LÝ ĐƠN HÀNG</h2>
+              <button 
+                @click="refreshData" 
+                :disabled="isRefreshing"
+                class="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 hover:text-orange-600 hover:bg-orange-50 hover:border-orange-100 transition-all disabled:opacity-50"
+                title="Làm mới dữ liệu"
+              >
+                <RefreshCw :size="16" :class="{ 'animate-spin': isRefreshing }" />
+              </button>
+            </div>
             
             <div class="flex flex-wrap items-center gap-4">
-              <div class="flex items-center gap-3 bg-white px-6 py-3 rounded-2xl border border-gray-100 shadow-sm flex-grow md:flex-grow-0">
+              <div class="flex items-center gap-3 bg-gray-50 px-6 py-3 rounded-2xl flex-grow md:flex-grow-0">
                 <Search :size="16" class="text-gray-400" />
                 <input 
                   v-model="orderSearch" 
@@ -1378,7 +1388,7 @@ const seedData = async () => {
                 />
               </div>
 
-              <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl border border-gray-100 shadow-sm">
+              <div class="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-2xl">
                 <Filter :size="14" class="text-gray-400" />
                 <select v-model="orderFilter" class="text-[10px] font-black uppercase tracking-widest bg-transparent border-none focus:ring-0 cursor-pointer">
                   <option value="all">Tất cả trạng thái</option>
@@ -1390,7 +1400,7 @@ const seedData = async () => {
                 </select>
               </div>
 
-              <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl border border-gray-100 shadow-sm">
+              <div class="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-2xl">
                 <Truck :size="14" class="text-gray-400" />
                 <select v-model="orderDeliveryFilter" class="text-[10px] font-black uppercase tracking-widest bg-transparent border-none focus:ring-0 cursor-pointer">
                   <option value="all">Tất cả PT giao</option>
@@ -1529,8 +1539,18 @@ const seedData = async () => {
 
         <!-- Categories Tab -->
         <div v-if="activeTab === 'categories' && authStore.isAdmin" class="space-y-10">
-          <div class="flex justify-between items-center">
-            <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">QUẢN LÝ DANH MỤC</h2>
+          <div class="flex justify-between items-center bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex-wrap gap-4">
+            <div class="flex items-center gap-4">
+              <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">QUẢN LÝ DANH MỤC</h2>
+              <button 
+                @click="refreshData" 
+                :disabled="isRefreshing"
+                class="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-orange-600 hover:bg-orange-50 hover:border-orange-100 transition-all disabled:opacity-50"
+                title="Làm mới dữ liệu"
+              >
+                <RefreshCw :size="16" :class="{ 'animate-spin': isRefreshing }" />
+              </button>
+            </div>
             <button @click="openCategoryModal()" class="flex items-center gap-3 px-8 py-4 bg-orange-600 text-white rounded-3xl font-black text-sm uppercase tracking-widest hover:bg-orange-700 transition-all shadow-xl shadow-orange-600/30">
               <Plus :size="20" /> Thêm danh mục
             </button>
@@ -1565,8 +1585,18 @@ const seedData = async () => {
 
         <!-- Products Tab -->
         <div v-if="activeTab === 'products' && authStore.isAdmin" class="space-y-10">
-          <div class="flex justify-between items-center">
-            <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">QUẢN LÝ SẢN PHẨM</h2>
+          <div class="flex justify-between items-center bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex-wrap gap-4">
+            <div class="flex items-center gap-4">
+              <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">QUẢN LÝ SẢN PHẨM</h2>
+              <button 
+                @click="refreshData" 
+                :disabled="isRefreshing"
+                class="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-orange-600 hover:bg-orange-50 hover:border-orange-100 transition-all disabled:opacity-50"
+                title="Làm mới dữ liệu"
+              >
+                <RefreshCw :size="16" :class="{ 'animate-spin': isRefreshing }" />
+              </button>
+            </div>
             <button @click="openProductModal()" class="flex items-center gap-3 px-8 py-4 bg-orange-600 text-white rounded-3xl font-black text-sm uppercase tracking-widest hover:bg-orange-700 transition-all shadow-xl shadow-orange-600/30">
               <Plus :size="20" /> Thêm sản phẩm
             </button>
@@ -1618,8 +1648,18 @@ const seedData = async () => {
 
         <!-- Vouchers Tab -->
         <div v-if="activeTab === 'vouchers' && authStore.isAdmin" class="space-y-10">
-          <div class="flex justify-between items-center">
-            <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">MÃ GIẢM GIÁ</h2>
+          <div class="flex justify-between items-center bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex-wrap gap-4">
+            <div class="flex items-center gap-4">
+              <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">MÃ GIẢM GIÁ</h2>
+              <button 
+                @click="refreshData" 
+                :disabled="isRefreshing"
+                class="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-orange-600 hover:bg-orange-50 hover:border-orange-100 transition-all disabled:opacity-50"
+                title="Làm mới dữ liệu"
+              >
+                <RefreshCw :size="16" :class="{ 'animate-spin': isRefreshing }" />
+              </button>
+            </div>
             <button @click="openVoucherModal()" class="flex items-center gap-3 px-8 py-4 bg-orange-600 text-white rounded-3xl font-black text-sm uppercase tracking-widest hover:bg-orange-700 transition-all shadow-xl shadow-orange-600/30">
               <Plus :size="20" /> Tạo Voucher
             </button>
@@ -1683,8 +1723,18 @@ const seedData = async () => {
 
         <!-- Users Tab -->
         <div v-if="activeTab === 'users' && authStore.isAdmin" class="space-y-10">
-          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-            <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">NGƯỜI DÙNG</h2>
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+            <div class="flex items-center gap-4">
+              <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">NGƯỜI DÙNG</h2>
+              <button 
+                @click="refreshData" 
+                :disabled="isRefreshing"
+                class="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 hover:text-orange-600 hover:bg-orange-50 hover:border-orange-100 transition-all disabled:opacity-50"
+                title="Làm mới dữ liệu"
+              >
+                <RefreshCw :size="16" :class="{ 'animate-spin': isRefreshing }" />
+              </button>
+            </div>
             
             <!-- User Search -->
             <div class="w-full md:w-[500px] flex gap-2">
@@ -1806,8 +1856,18 @@ const seedData = async () => {
 
         <!-- Settings Tab -->
         <div v-if="activeTab === 'settings' && authStore.isAdmin" class="space-y-10">
-          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-            <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">CỬA HÀNG</h2>
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+            <div class="flex items-center gap-4">
+              <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">CỬA HÀNG</h2>
+              <button 
+                @click="refreshData" 
+                :disabled="isRefreshing"
+                class="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 hover:text-orange-600 hover:bg-orange-50 hover:border-orange-100 transition-all disabled:opacity-50"
+                title="Làm mới dữ liệu"
+              >
+                <RefreshCw :size="16" :class="{ 'animate-spin': isRefreshing }" />
+              </button>
+            </div>
             <button 
               @click="saveStoreInfo"
               :disabled="isSavingStoreInfo"
@@ -1966,8 +2026,18 @@ const seedData = async () => {
 
         <!-- Cache Management Tab -->
         <div v-if="activeTab === 'cache' && authStore.isAdmin" class="space-y-10">
-          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-            <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">QUẢN LÝ CACHE</h2>
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+            <div class="flex items-center gap-4">
+              <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">QUẢN LÝ CACHE</h2>
+              <button 
+                @click="refreshData" 
+                :disabled="isRefreshing"
+                class="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 hover:text-orange-600 hover:bg-orange-50 hover:border-orange-100 transition-all disabled:opacity-50"
+                title="Làm mới dữ liệu"
+              >
+                <RefreshCw :size="16" :class="{ 'animate-spin': isRefreshing }" />
+              </button>
+            </div>
             <button 
               @click="clearCustomerCache" 
               :disabled="isClearingCache"
