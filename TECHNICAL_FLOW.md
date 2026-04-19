@@ -46,19 +46,28 @@ Luồng này xử lý từ khi người dùng có sản phẩm trong giỏ hàng
 6.  **Đồng bộ dữ liệu (Google Sheets Sync)**:
     *   Hệ thống gọi `syncOrderToGoogleSheets(order)`.
     *   Gửi request `POST` tới Google Apps Script Web App URL (được cấu hình trong settings).
-    *   Dữ liệu được ghi trực tiếp vào Google Sheet để lưu trữ lâu dài và làm báo cáo mà không tốn quota Read của Firestore.
-7.  **Hoàn tất**: Xóa giỏ hàng (`cartStore.clearCart()`) và hiển thị màn hình thành công.
+    *   Dữ liệu được ghi trực tiếp vào Google Sheet để lưu trữ lâu dài.
+7.  **Báo cáo & Thống kê Tối ưu Chi phí (Zero-Read Analytics)**:
+    *   Từ dữ liệu đã đồng bộ sang Sheet, hệ thống xử lý phân tích dữ liệu khổng lồ thông qua kiến trúc **Google Apps Script (GAS) + iframe**. 
+    *   **Quy trình kết xuất:** Admin chọn khoảng thời gian "Từ ngày" - "Đến ngày" trên bản điều khiển. Frontend tạo ra một đường dẫn ghép nối theo tham số (query parameters) gửi thẳng vào Google Web App và nhúng qua thẻ HTML `<iframe />`.
+    *   Web App (Google) tự động chạy script, tính toán *Tổng doanh thu, Số đơn chờ, Số đơn hoàn tất* và vẽ **Biểu đồ tăng trưởng** đính kèm **Bảng chi tiết doanh thu**. Báo cáo tĩnh này được xuất trả về Frontend.
+    *   **Lợi ích:** Quá trình lọc biểu đồ dữ liệu của cả nghìn đơn hàng này tốn ĐÚNG 0 LƯỢT ĐỌC (Reads) bên Cloud Firestore. Database hoàn toàn không chịu gánh nặng thống kê.
+8.  **Hoàn tất**: Xóa giỏ hàng (`cartStore.clearCart()`) và hiển thị màn hình thành công.
 
 ---
 
 ## 3. Luồng Quản lý & Cập nhật Dữ liệu (Management Flow)
 
-Hệ thống đã **lược bỏ việc sử dụng Real-time Listeners (`onSnapshot`) toàn cục** để nhường chỗ cho cơ chế lấy dữ liệu chủ động kết hợp với Cache, giúp tối ưu hóa chi phí (giảm Firestore Reads đáng kể) và cải thiện hiệu suất của ứng dụng.
+Hệ thống sử dụng cơ chế **Hybrid Data Fetching** (kết hợp lấy dữ liệu chủ động, Cache và Real-time giới hạn siêu nhỏ) giúp tối ưu hóa chi phí (giảm Firestore Reads đáng kể) nhưng vẫn giữ được trải nghiệm UX thời gian thực xuất sắc.
 
-### Quy trình:
-1.  **Chủ động tải dữ liệu (Fetch Data)**:
-    *   Trong `Admin.vue` hoặc `Orders.vue` (Lịch sử đơn hàng khách hàng), hệ thống sử dụng hàm `getDocs()` để lấy dữ liệu.
-    *   Việc làm mới dữ liệu (lấy đơn hàng mới, danh mục mới) được thực hiện một cách chủ động thông qua nút bấm "Làm mới dữ liệu" (biểu tượng vòng xoay) trên các tiêu đề Tab. Điều này giúp ngăn chặn các truy vấn thừa thãi khi màn hình chỉ đang mở ở trạng thái nhàn rỗi.
+### Quy trình Thực thi:
+1.  **Theo dõi ngầm thông minh (Micro Real-time Tracking)**:
+    *   Tại ứng dụng gốc (`App.vue`), hệ thống đặt DUY NHẤT một listener (`onSnapshot`) có giới hạn cực chặt chẽ: `limit(2)`. Nghĩa là ứng dụng CHỈ theo dõi 2 đơn hàng xếp mới nhất của user đang đăng nhập.
+    *   **Tối ưu Reads:** Nếu trạng thái là `completed` hoặc `cancelled`, listener tự động ngừng theo dõi nội bộ thẻ đó nhằm đưa về trạng thái ngủ đông.
+    *   **Cập nhật Giao diện:** Khi có thay đổi từ Server (vd: Admin xác nhận đơn), `App.vue` bắn ra một tín hiệu sóng `CustomEvent('order-status-updated')` chứa ID đơn. View `Orders.vue` bắt được sóng này và tự "biến đổi" màu sắc trạng thái thẻ đơn hàng liền lập tức kèm theo Toast nhắc nhở mà KHÔNG phải bóc dữ liệu truy vấn lại danh sách lịch sử.
+2.  **Chủ động tải dữ liệu (Fetch Data cho danh sách lớn)**:
+    *   Trong `Admin.vue` hoặc toàn màn lịch sử tổng hợp, hệ thống dùng `getDocs()` để lấy dữ liệu tĩnh.
+    *   Việc làm mới dữ liệu (lấy đơn hàng mới, thông báo lịch sử cũ) được thực hiện một cách chủ động thông qua nút bấm "Làm mới dữ liệu" (biểu tượng vòng xoay). Điều này giúp ngăn chặn các truy vấn thừa thãi khi màn hình chỉ đang mở ở trạng thái nhàn rỗi.
 2.  **Cập nhật Trạng thái đơn hàng**:
     *   Admin/Staff nhấn nút thao tác đổi trạng thái (ví dụ: từ `pending` -> `processing`).
     *   Hàm gửi lệnh `updateDoc` lên Firestore. Nút "Làm mới" ngay tại mỗi đơn hàng cho phép admin tự fetch cấu trúc dữ liệu đơn hàng cụ thể. Lịch sử đơn hàng phía Client thì cho cài đặt nút Refresh để theo dõi hành trình đơn hàng hiện tại.

@@ -63,9 +63,6 @@ const authStore = useAuthStore();
 const router = useRouter();
 const activeTab = ref('dashboard');
 
-// Dashboard View Mode
-const dashboardViewMode = ref<'sheet' | 'firebase'>('sheet');
-
 // Pagination & Search States
 const ITEM_PAGE_SIZE = 6;
 
@@ -240,17 +237,9 @@ const fetchStoreInfo = async () => {
     const docSnap = await getDoc(doc(db, 'settings', 'store_info'));
     if (docSnap.exists()) {
       storeInfo.value = { ...storeInfo.value, ...docSnap.data() };
-      if (storeInfo.value.googleSheetsDashboardUrl) {
-        dashboardViewMode.value = 'sheet';
-      } else {
-        dashboardViewMode.value = 'firebase';
-      }
-    } else {
-      dashboardViewMode.value = 'firebase';
     }
   } catch (error) {
     console.error('Error fetching store info:', error);
-    dashboardViewMode.value = 'firebase';
   }
 };
 
@@ -397,55 +386,8 @@ onMounted(async () => {
     fetchCacheConfig()
   ]);
   
-  if (dashboardViewMode.value === 'firebase') {
-    await fetchStatsOrders();
-  }
-
   loading.value = false;
 });
-
-watch(dashboardViewMode, async (newMode) => {
-  if (newMode === 'firebase') {
-    await fetchStatsOrders();
-  }
-});
-
-// Dashboard Statistics
-const statsRange = ref<'day'>('day');
-const statsOrders = ref<Order[]>([]);
-const isLoadingStats = ref(false);
-
-const fetchStatsOrders = async () => {
-  isLoadingStats.value = true;
-  try {
-    const now = new Date();
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    
-    const q = query(
-      collection(db, 'orders'),
-      where('status', '==', 'completed'),
-      where('createdAt', '>=', Timestamp.fromDate(start)),
-      where('createdAt', '<=', Timestamp.fromDate(now))
-    );
-
-    const snapshot = await getDocs(q);
-    statsOrders.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
-  } catch (error) {
-    console.error('Error fetching stats orders:', error);
-  } finally {
-    isLoadingStats.value = false;
-  }
-};
-
-watch(statsRange, fetchStatsOrders, { immediate: true });
-
-const filteredStatsOrders = computed(() => {
-  return statsOrders.value;
-});
-
-const totalRevenueInRange = computed(() => filteredStatsOrders.value.reduce((acc, o) => acc + o.totalAmount, 0));
-const totalOrdersInRange = computed(() => filteredStatsOrders.value.length);
 
 // Voucher Modal State
 const isVoucherModalOpen = ref(false);
@@ -1313,7 +1255,7 @@ const seedData = async () => {
       <div v-else class="max-w-6xl mx-auto space-y-8">
         <!-- Dashboard Tab -->
         <div v-if="activeTab === 'dashboard'" class="space-y-16">
-          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div class="flex justify-between items-end">
             <div class="flex items-center gap-4">
               <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">TỔNG QUAN</h2>
               <button 
@@ -1327,31 +1269,18 @@ const seedData = async () => {
             </div>
             
             <div class="flex flex-wrap items-center gap-4">
-              <div v-if="storeInfo.googleSheetsDashboardUrl" class="flex bg-gray-100 p-1 rounded-2xl">
-                <button 
-                  @click="dashboardViewMode = 'sheet'"
-                  class="px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
-                  :class="dashboardViewMode === 'sheet' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500 hover:text-gray-900'"
-                >
-                  Google Sheet
-                </button>
-                <button 
-                  @click="dashboardViewMode = 'firebase'"
-                  class="px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
-                  :class="dashboardViewMode === 'firebase' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500 hover:text-gray-900'"
-                >
-                  Firebase
-                </button>
-              </div>
-              
-              <div v-if="dashboardViewMode === 'firebase' || !storeInfo.googleSheetsDashboardUrl" class="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl border border-gray-100 shadow-sm">
+              <div v-if="!storeInfo.googleSheetsDashboardUrl" class="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl border border-gray-100 shadow-sm">
                 <Calendar :size="14" class="text-gray-400" />
                 <span class="text-[10px] font-black uppercase tracking-widest text-orange-600">Hôm nay</span>
+              </div>
+              <div v-else class="flex items-center gap-2 bg-green-50 text-green-600 px-4 py-2 rounded-2xl border border-green-100 shadow-sm animate-pulse-slow">
+                <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span class="text-[10px] font-black uppercase tracking-widest text-green-700">Đã kết nối AppScript</span>
               </div>
             </div>
           </div>
 
-          <div v-if="dashboardViewMode === 'sheet' && storeInfo.googleSheetsDashboardUrl" class="w-full h-[800px] bg-white rounded-[50px] shadow-sm border border-gray-100 overflow-hidden relative">
+          <div v-if="storeInfo.googleSheetsDashboardUrl" class="w-full h-[800px] bg-white rounded-[50px] shadow-sm border border-gray-100 overflow-hidden relative">
             <iframe 
               :src="storeInfo.googleSheetsDashboardUrl" 
               class="w-full h-full border-none"
@@ -1359,72 +1288,21 @@ const seedData = async () => {
             ></iframe>
           </div>
 
-          <template v-else>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-10">
-              <div class="bg-white p-10 rounded-[50px] shadow-sm border border-gray-100 space-y-6">
-                <div class="w-16 h-16 bg-green-100 text-green-600 rounded-3xl flex items-center justify-center">
-                  <TrendingUp :size="32" />
-                </div>
-                <div>
-                  <p class="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1">Doanh thu hôm nay</p>
-                  <p class="text-4xl font-black text-gray-900 tracking-tighter">{{ totalRevenueInRange.toLocaleString() }}đ</p>
-                </div>
-              </div>
-              <div class="bg-white p-10 rounded-[50px] shadow-sm border border-gray-100 space-y-6">
-                <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-3xl flex items-center justify-center">
-                  <ShoppingBag :size="32" />
-                </div>
-                <div>
-                  <p class="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1">Đơn hàng hôm nay</p>
-                  <p class="text-4xl font-black text-gray-900 tracking-tighter">{{ totalOrdersInRange }}</p>
-                </div>
-              </div>
-              <div class="bg-white p-10 rounded-[50px] shadow-sm border border-gray-100 space-y-6">
-                <div class="w-16 h-16 bg-yellow-100 text-yellow-600 rounded-3xl flex items-center justify-center">
-                  <Clock :size="32" />
-                </div>
-                <div>
-                  <p class="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1">Đơn chờ xử lý</p>
-                  <p class="text-4xl font-black text-gray-900 tracking-tighter">{{ pendingOrders }}</p>
-                </div>
-              </div>
+          <div v-else class="flex flex-col items-center justify-center py-32 text-center space-y-6 bg-white rounded-[50px] shadow-sm border border-gray-100">
+            <div class="w-24 h-24 bg-orange-50 rounded-full flex items-center justify-center text-orange-600">
+              <TrendingUp :size="48" />
             </div>
-
-            <div class="bg-white p-10 rounded-[50px] shadow-sm border border-gray-100 space-y-10">
-              <h3 class="text-2xl font-black text-gray-900 uppercase tracking-tighter">Đơn hàng mới nhất</h3>
-              <div class="overflow-x-auto no-scrollbar">
-                <table class="w-full text-left border-collapse">
-                  <thead>
-                    <tr class="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] border-b border-gray-50">
-                      <th class="pb-6 px-4">Mã đơn</th>
-                      <th class="pb-6 px-4">Khách hàng</th>
-                      <th class="pb-6 px-4">Tổng tiền</th>
-                      <th class="pb-6 px-4">Trạng thái</th>
-                      <th class="pb-6 px-4">Ngày đặt</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-gray-50">
-                    <tr v-for="order in orders.slice(0, 5)" :key="order.id" class="group hover:bg-gray-50 transition-colors">
-                      <td class="py-6 px-4 font-black text-orange-600 text-sm">#{{ order.id.slice(-6) }}</td>
-                      <td class="py-6 px-4">
-                        <p class="font-black text-gray-900 text-sm uppercase tracking-tight">{{ order.customerName }}</p>
-                        <p class="text-[10px] text-gray-400 font-bold">{{ order.customerPhone }}</p>
-                      </td>
-                      <td class="py-6 px-4 font-black text-gray-900 tracking-tighter">{{ (order.totalAmount || 0).toLocaleString() }}đ</td>
-                      <td class="py-6 px-4">
-                        <span :class="['px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest', getStatusColor(order.status)]">
-                          {{ getStatusLabel(order.status) }}
-                        </span>
-                      </td>
-                      <td class="py-6 px-4 text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                        {{ order.createdAt.toDate().toLocaleDateString('vi-VN') }}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+            <div class="space-y-4 max-w-md">
+              <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tighter">CHƯA CẤU HÌNH THỐNG KÊ</h2>
+              <p class="text-gray-500 font-medium">Bạn chưa cấu hình đường dẫn (Dashboard URL) của Google Apps Script để xem Bảng Thống Kê nâng cao (Zero-read).</p>
             </div>
-          </template>
+            <button
+               @click="activeTab = 'settings'"
+              class="mt-4 py-4 px-8 bg-[#C04D1E] text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-[#C04D1E]/30 hover:bg-[#a34119] transition-colors"
+            >
+              Chuyển đến cấu hình
+            </button>
+          </div>
         </div>
 
         <!-- Orders Tab -->
