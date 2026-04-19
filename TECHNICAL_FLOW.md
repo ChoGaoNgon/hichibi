@@ -51,20 +51,20 @@ Luồng này xử lý từ khi người dùng có sản phẩm trong giỏ hàng
 
 ---
 
-## 3. Luồng Quản lý & Real-time (Management Flow)
+## 3. Luồng Quản lý & Cập nhật Dữ liệu (Management Flow)
 
-Hệ thống sử dụng tính năng **Real-time Listeners** của Firestore để cập nhật dữ liệu mà không cần tải lại trang.
+Hệ thống đã **lược bỏ việc sử dụng Real-time Listeners (`onSnapshot`) toàn cục** để nhường chỗ cho cơ chế lấy dữ liệu chủ động kết hợp với Cache, giúp tối ưu hóa chi phí (giảm Firestore Reads đáng kể) và cải thiện hiệu suất của ứng dụng.
 
 ### Quy trình:
-1.  **Lắng nghe dữ liệu**:
-    *   Trong `Admin.vue` hoặc `Home.vue`, sử dụng hàm `onSnapshot()`.
-    *   Khi có bất kỳ thay đổi nào trong collection `orders` hoặc `products` trên server, Firebase sẽ đẩy dữ liệu mới về client ngay lập tức.
+1.  **Chủ động tải dữ liệu (Fetch Data)**:
+    *   Trong `Admin.vue` hoặc `Orders.vue` (Lịch sử đơn hàng khách hàng), hệ thống sử dụng hàm `getDocs()` để lấy dữ liệu.
+    *   Việc làm mới dữ liệu (lấy đơn hàng mới, danh mục mới) được thực hiện một cách chủ động thông qua nút bấm "Làm mới dữ liệu" (biểu tượng vòng xoay) trên các tiêu đề Tab. Điều này giúp ngăn chặn các truy vấn thừa thãi khi màn hình chỉ đang mở ở trạng thái nhàn rỗi.
 2.  **Cập nhật Trạng thái đơn hàng**:
-    *   Admin/Staff nhấn nút đổi trạng thái (ví dụ: từ `pending` -> `processing`).
-    *   Hàm `executeStatusUpdate()` gọi `updateDoc` lên Firestore.
-    *   **Security Check**: Firebase Security Rules kiểm tra xem người dùng có quyền `staff` hoặc `admin` không trước khi cho phép ghi.
+    *   Admin/Staff nhấn nút thao tác đổi trạng thái (ví dụ: từ `pending` -> `processing`).
+    *   Hàm gửi lệnh `updateDoc` lên Firestore. Nút "Làm mới" ngay tại mỗi đơn hàng cho phép admin tự fetch cấu trúc dữ liệu đơn hàng cụ thể. Lịch sử đơn hàng phía Client thì cho cài đặt nút Refresh để theo dõi hành trình đơn hàng hiện tại.
+    *   **Security Check**: Firebase Security Rules kiểm tra nghiêm ngặt người dùng có quyền `staff` hoặc `admin` thật sự không trước khi cho phép ghi/sửa.
 3.  **In hóa đơn**:
-    *   Hàm `printOrder()` lấy dữ liệu đơn hàng hiện tại, tạo một template HTML tạm thời và gọi `window.print()`.
+    *   Hàm `printOrder()` lấy dữ liệu đơn hàng hiện tại, tạo một template HTML in ấn thu nhỏ phù hợp cho máy in nhiệt và gọi lệnh `window.print()` của trình duyệt.
 
 ---
 
@@ -111,3 +111,66 @@ Bảo mật được thực hiện ở 3 lớp:
 Sử dụng **Pinia** với 2 store chính:
 -   **AuthStore**: Lưu trữ thông tin người dùng, quyền hạn và trạng thái đăng nhập.
 -   **CartStore**: Lưu trữ danh sách sản phẩm trong giỏ hàng, phương thức vận chuyển và tính toán tổng tiền. Dữ liệu này được đồng bộ với `localStorage` để không bị mất khi F5 trang.
+
+## 6. Cấu trúc Cơ sở dữ liệu (Database Structure)
+
+Hệ thống sử dụng **Firestore (NoSQL)** làm cơ sở dữ liệu chính. Dưới đây là kiến trúc các Collections và mô tả chi tiết từng Document.
+
+### 1. Collection `users`
+Lưu trữ thông tin hồ sơ và định danh người dùng.
+- `uid` (string): ID duy nhất của người dùng cung cấp bởi Firebase Auth.
+- `email` (string): Email của tài khoản.
+- `displayName` (string): Tên hiển thị công khai.
+- `role` (string): Quyền hạn truy cập, bao gồm `admin`, `staff`, `tablet`, hoặc `customer`.
+- `createdAt` (timestamp): Thời gian người dùng tạo tài khoản.
+
+### 2. Collection `categories`
+Lưu trữ các nhóm danh mục phân loại thực đơn.
+- `name` (string): Tên danh mục (vd: Cà phê, Trà sữa...).
+- `slug` (string): URL thân thiện (vd: `ca-phe`).
+- `order` (number): Số thứ tự ưu tiên hiển thị trên màn hình.
+- `image` (string - tùy chọn): Link liên kết hình ảnh danh mục.
+
+### 3. Collection `products`
+Lưu trữ thông tin các món đồ uống và thức ăn.
+- `name` (string): Tên sản phẩm.
+- `description` (string): Hiển thị chi tiết mô tả đồ uống.
+- `price` (number): Mức giá bán cơ bản (Price gốc).
+- `image` (string): URL hình ảnh món.
+- `category` (string): Slug của danh mục để hệ thống nhóm món (vd: `ca-phe`).
+- `isAvailable` (boolean): Trạng thái mở bán (True) hay Hết hàng/Tạm khóa (False).
+- `isTrending` (boolean - tùy chọn): Gắn nhãn sản phẩm Bán chạy/Đang Hot.
+
+### 4. Collection `orders`
+Lưu trữ thông tin và lịch sử vòng đời của từng đơn đặt hàng.
+- `userId` (string): Ref ID của người đặt hàng. (Với mPOS/tablet có thể rỗng).
+- `customerName`, `customerPhone` (string): Tên và SĐT liên hệ.
+- `items` (array): Mảng chứa các đối tượng sản phẩm (Gồm `productId`, `name`, `quantity`, `price`, `size`, `toppings`).
+- `totalAmount`, `subtotal` (number): Thành tiền và Tổng cộng cuối cùng (Đã trừ chiết khấu).
+- `status` (string): Trạng thái đơn (Gồm: `pending` chờ xử lý, `processing` pha chế, `delivering` đang giao, `completed` hoàn tất, `cancelled` bị hủy).
+- `deliveryMethod` (string): Phương thức (`delivery` giao đi, `pickup` đến lấy, `dine-in` tại quán).
+- `address`, `note` (string): Vị trí và Ghi chú thêm.
+- `voucherCode`, `discountAmount` (tùy chọn): Thuộc tính đi kèm khi Add Voucher.
+- `paymentMethod` (string): `cash`, `momo`, `zalopay`, `vietqr`.
+- `createdAt`, `updatedAt` (timestamp): Đánh dấu thời gian đặt đơn và lúc được Staff tác động mới nhất.
+
+### 5. Collection `vouchers`
+Kho lưu trữ khuyến mãi / mã giảm giá.
+- `code` (string): Định danh mã nhập (Ví dụ: `SALE50K`).
+- `discountType` (string): Phân loại giảm (`percentage` giảm theo % hoặc `fixed` giảm thẳng tiền mặt).
+- `discountValue` (number): Giá trị tương ứng với Loại (vd: 10% hoặc 50000đ).
+- `minOrderAmount` (number): Giá trị đơn hàng tối thiểu để mã có hiệu lực.
+- `maxUsage`, `usedCount` (number): Số lượng nhả ra giới hạn và Số mã Khách đã sử dụng thành công.
+- `startDate`, `endDate` (timestamp): Thời hạn hiệu lực áp dụng của mã.
+- `isActive` (boolean): Quản trị viên kích hoạt / vô hiệu hóa mã ngay lập tức.
+
+### 6. Collection `settings`
+Nơi cấu hình Metadata của toàn bộ cửa hàng và tinh chỉnh Server.
+* **Document `store_info`**:
+  - `name`, `address`, `phone`, `email`: Thiết lập thông tin liên hệ tĩnh.
+  - `workingHours`, `facebook`, `instagram`, `mapEmbedUrl`: Thiết lập nhúng thông tin lên màn hình Client.
+  - `telegramBotToken`, `telegramChatId`: Thiết lập BOT push thông báo khi có đơn mới.
+  - `googleSheetsUrl`: Web Hook đồng bộ thẳng lên Google Sheet.
+* **Document `cache_info`**:
+  - `lastUpdated` (timestamp): Thời gian cuối cùng Menu thay đổi.
+  - `autoUpdate` (boolean): Chọn làm mới Client âm thầm hoặc Cần có sự đồng ý của Admin.
