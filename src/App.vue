@@ -1,13 +1,90 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { onMounted, watch, ref, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from './stores/auth';
-import { Toaster } from 'vue-sonner';
+import { Toaster, toast } from 'vue-sonner';
 import Navbar from './components/Navbar.vue';
 import WebViewGuard from './components/WebViewGuard.vue';
+import { db, collection, query, where, orderBy, limit, onSnapshot } from './firebase';
+import type { Order } from './types';
 
 const authStore = useAuthStore();
 const route = useRoute();
+
+const unsubscribeActiveOrders = ref<() => void>();
+const knownOrderStatuses = ref<Record<string, string>>({});
+
+watch(() => authStore.user, (user) => {
+  if (unsubscribeActiveOrders.value) {
+    unsubscribeActiveOrders.value();
+    unsubscribeActiveOrders.value = undefined;
+    knownOrderStatuses.value = {};
+  }
+  
+  // Listen to top 2 newest orders to improve UX for customers/staff
+  if (user) {
+    const q = query(
+      collection(db, 'orders'),
+      where('userId', '==', user.uid),
+      orderBy('createdAt', 'desc'),
+      limit(2)
+    );
+    
+    unsubscribeActiveOrders.value = onSnapshot(q, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        const order = change.doc.data() as Order;
+        const oId = change.doc.id;
+        
+        // Dispatch global event so UI component (Orders.vue) can update in real-time
+        window.dispatchEvent(new CustomEvent('order-status-updated', {
+          detail: { id: oId, status: order.status }
+        }));
+        
+        const oldStatus = knownOrderStatuses.value[oId];
+
+        if (change.type === 'added') {
+          // If first loaded and it's already terminal, do not track for live toasts.
+          if (!['completed', 'cancelled'].includes(order.status)) {
+            knownOrderStatuses.value[oId] = order.status;
+          }
+        } else if (change.type === 'modified') {
+          // If tracked status changed
+          if (oldStatus && oldStatus !== order.status) {
+            const statusMap: Record<string, string> = {
+              'pending': 'Chờ xác nhận',
+              'processing': 'Đang pha chế',
+              'delivering': 'Đang giao hàng',
+              'completed': 'Đã hoàn thành',
+              'cancelled': 'Đã hủy',
+            };
+            toast.info(`Đơn hàng #${oId.slice(-6).toUpperCase()}`, {
+              description: `Trạng thái mới: ${statusMap[order.status] || order.status}`,
+              duration: 5000,
+            });
+            
+            // If it reached a terminal state, stop tracking
+            if (['completed', 'cancelled'].includes(order.status)) {
+              delete knownOrderStatuses.value[oId];
+            } else {
+              knownOrderStatuses.value[oId] = order.status;
+            }
+          // If it started tracking later (e.g. was offline/reconnected)
+          } else if (!oldStatus && !['completed', 'cancelled'].includes(order.status)) {
+            knownOrderStatuses.value[oId] = order.status;
+          }
+        }
+      });
+    }, (error) => {
+      console.warn('Active orders listener error:', error);
+    });
+  }
+});
+
+onUnmounted(() => {
+  if (unsubscribeActiveOrders.value) {
+    unsubscribeActiveOrders.value();
+  }
+});
 
 onMounted(() => {
   authStore.init();

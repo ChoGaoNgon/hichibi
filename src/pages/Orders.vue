@@ -169,8 +169,31 @@ const showStatusToast = (order: Order) => {
   });
 };
 
+const handleGlobalStatusUpdate = (e: Event) => {
+  const detail = (e as CustomEvent).detail;
+  if (!detail) return;
+  const { id, status } = detail;
+  
+  const index = orders.value.findIndex(o => o.id === id);
+  if (index !== -1) {
+    if (orders.value[index].status !== status) {
+      orders.value[index].status = status;
+      if (selectedOrder.value?.id === id) {
+        selectedOrder.value = { ...selectedOrder.value, status };
+      }
+    }
+  }
+};
+
 onMounted(() => {
   fetchOrders();
+  window.addEventListener('order-status-updated', handleGlobalStatusUpdate);
+});
+
+import { onUnmounted } from 'vue';
+
+onUnmounted(() => {
+  window.removeEventListener('order-status-updated', handleGlobalStatusUpdate);
 });
 
 const getStatusColor = (status: OrderStatus) => {
