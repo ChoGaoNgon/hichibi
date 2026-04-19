@@ -73,7 +73,15 @@ const products = ref<Product[]>([]);
 const lastProductDoc = ref<any>(null);
 const hasMoreProducts = ref(true);
 
+const categorySearchInput = ref('');
+const allCategories = ref<Category[]>([]);
 const categories = ref<Category[]>([]);
+
+const productSearchInput = ref('');
+const productCategoryFilter = ref('');
+const isSearchingProducts = ref(false);
+const allFilteredProducts = ref<Product[]>([]);
+
 const lastCategoryDoc = ref<any>(null);
 const hasMoreCategories = ref(true);
 
@@ -462,8 +470,64 @@ const generateVoucherCode = () => {
   voucherForm.value.code = code;
 };
 
+const searchProducts = async () => {
+  if (!authStore.isAdmin) return;
+  const s = productSearchInput.value.trim().toLowerCase();
+  const c = productCategoryFilter.value;
+  
+  if (!s && !c) {
+    isSearchingProducts.value = false;
+    lastProductDoc.value = null; // reset pagination
+    await fetchProducts();
+    return;
+  }
+  
+  isSearchingProducts.value = true;
+  try {
+    const q = c ? query(collection(db, 'products'), where('category', '==', c)) : collection(db, 'products');
+    const snapshot = await getDocs(q);
+    let results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+    
+    if (s) {
+      results = results.filter(p => p.name.toLowerCase().includes(s));
+    }
+    
+    // Sort by name for search results
+    results.sort((a, b) => a.name.localeCompare(b.name));
+    
+    allFilteredProducts.value = results;
+    fetchProducts(false); // Render first page
+  } catch (err) {
+    console.error('Error searching products:', err);
+    toast.error('Có lỗi xảy ra khi tìm kiếm sản phẩm');
+  }
+};
+
+const searchCategories = () => {
+  const s = categorySearchInput.value.trim().toLowerCase();
+  if (!s) {
+    categories.value = [...allCategories.value];
+  } else {
+    categories.value = allCategories.value.filter(c => c.name.toLowerCase().includes(s));
+  }
+};
+
 const fetchProducts = async (loadMore = false) => {
   if (!authStore.isAdmin) return;
+  
+  if (isSearchingProducts.value) {
+    if (loadMore) {
+      const currentLength = products.value.length;
+      const nextBatch = allFilteredProducts.value.slice(currentLength, currentLength + ITEM_PAGE_SIZE);
+      products.value = [...products.value, ...nextBatch];
+      hasMoreProducts.value = products.value.length < allFilteredProducts.value.length;
+    } else {
+      products.value = allFilteredProducts.value.slice(0, ITEM_PAGE_SIZE);
+      hasMoreProducts.value = products.value.length < allFilteredProducts.value.length;
+    }
+    return;
+  }
+
   try {
     let q = query(collection(db, 'products'), limit(ITEM_PAGE_SIZE));
     if (loadMore && lastProductDoc.value) {
@@ -494,7 +558,8 @@ const fetchCategories = async () => {
     const q = query(collection(db, 'categories'), orderBy('order', 'asc'));
     
     const snapshot = await getDocs(q);
-    categories.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
+    allCategories.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
+    searchCategories(); // Apply any active search filter
     
     hasMoreCategories.value = false;
   } catch (error) {
@@ -1539,21 +1604,44 @@ const seedData = async () => {
 
         <!-- Categories Tab -->
         <div v-if="activeTab === 'categories' && authStore.isAdmin" class="space-y-10">
-          <div class="flex justify-between items-center bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex-wrap gap-4">
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
             <div class="flex items-center gap-4">
               <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">QUẢN LÝ DANH MỤC</h2>
               <button 
                 @click="refreshData" 
                 :disabled="isRefreshing"
-                class="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-orange-600 hover:bg-orange-50 hover:border-orange-100 transition-all disabled:opacity-50"
+                class="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 hover:text-orange-600 hover:bg-orange-50 hover:border-orange-100 transition-all disabled:opacity-50 flex-shrink-0"
                 title="Làm mới dữ liệu"
               >
                 <RefreshCw :size="16" :class="{ 'animate-spin': isRefreshing }" />
               </button>
             </div>
-            <button @click="openCategoryModal()" class="flex items-center gap-3 px-8 py-4 bg-orange-600 text-white rounded-3xl font-black text-sm uppercase tracking-widest hover:bg-orange-700 transition-all shadow-xl shadow-orange-600/30">
-              <Plus :size="20" /> Thêm danh mục
-            </button>
+            
+            <div class="flex flex-wrap items-center gap-4">
+              <div class="flex items-center gap-3 bg-gray-50 px-6 py-3 rounded-2xl flex-grow md:flex-grow-0">
+                <Search :size="16" class="text-gray-400" />
+                <input 
+                  v-model="categorySearchInput" 
+                  @keyup.enter="searchCategories"
+                  type="text" 
+                  placeholder="Tìm tên danh mục..." 
+                  class="text-xs font-bold bg-transparent border-none focus:ring-0 w-full md:w-48"
+                />
+              </div>
+              <button 
+                @click="searchCategories"
+                class="px-6 py-3 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all"
+              >
+                Tìm kiếm
+              </button>
+              <button 
+                @click="openCategoryModal()" 
+                class="w-12 h-12 flex items-center justify-center bg-orange-600 text-white rounded-2xl hover:bg-orange-700 transition-all shadow-xl shadow-orange-600/30 flex-shrink-0"
+                title="Thêm danh mục"
+              >
+                <Plus :size="24" />
+              </button>
+            </div>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
             <div
@@ -1585,21 +1673,51 @@ const seedData = async () => {
 
         <!-- Products Tab -->
         <div v-if="activeTab === 'products' && authStore.isAdmin" class="space-y-10">
-          <div class="flex justify-between items-center bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex-wrap gap-4">
+          <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
             <div class="flex items-center gap-4">
               <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">QUẢN LÝ SẢN PHẨM</h2>
               <button 
                 @click="refreshData" 
                 :disabled="isRefreshing"
-                class="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-orange-600 hover:bg-orange-50 hover:border-orange-100 transition-all disabled:opacity-50"
+                class="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 hover:text-orange-600 hover:bg-orange-50 hover:border-orange-100 transition-all disabled:opacity-50 flex-shrink-0"
                 title="Làm mới dữ liệu"
               >
                 <RefreshCw :size="16" :class="{ 'animate-spin': isRefreshing }" />
               </button>
             </div>
-            <button @click="openProductModal()" class="flex items-center gap-3 px-8 py-4 bg-orange-600 text-white rounded-3xl font-black text-sm uppercase tracking-widest hover:bg-orange-700 transition-all shadow-xl shadow-orange-600/30">
-              <Plus :size="20" /> Thêm sản phẩm
-            </button>
+            
+            <div class="flex flex-wrap items-center gap-4">
+              <div class="flex items-center gap-3 bg-gray-50 px-6 py-3 rounded-2xl flex-grow md:flex-grow-0">
+                <Search :size="16" class="text-gray-400" />
+                <input 
+                  v-model="productSearchInput" 
+                  @keyup.enter="searchProducts"
+                  type="text" 
+                  placeholder="Tìm tên sản phẩm..." 
+                  class="text-xs font-bold bg-transparent border-none focus:ring-0 w-full md:w-48"
+                />
+              </div>
+              <div class="flex items-center gap-2 bg-gray-50 px-4 py-3 rounded-2xl">
+                <Filter :size="14" class="text-gray-400" />
+                <select v-model="productCategoryFilter" class="text-[10px] font-black uppercase tracking-widest bg-transparent border-none focus:ring-0 cursor-pointer w-full md:w-32">
+                  <option value="">Tất cả danh mục</option>
+                  <option v-for="cat in allCategories" :key="cat.id" :value="cat.slug">{{ cat.name }}</option>
+                </select>
+              </div>
+              <button 
+                @click="searchProducts"
+                class="px-6 py-3 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all"
+              >
+                Tìm kiếm
+              </button>
+              <button 
+                @click="openProductModal()" 
+                class="w-12 h-12 flex items-center justify-center bg-orange-600 text-white rounded-2xl hover:bg-orange-700 transition-all shadow-xl shadow-orange-600/30 flex-shrink-0"
+                title="Thêm sản phẩm"
+              >
+                <Plus :size="24" />
+              </button>
+            </div>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
             <div
