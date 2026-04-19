@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { 
   ArrowLeft, 
@@ -12,11 +12,12 @@ import {
   XCircle,
   Copy,
   Plus,
-  MapPin
+  MapPin,
+  RefreshCw
 } from 'lucide-vue-next';
 import { useAuthStore } from '../stores/auth';
 import { useCartStore } from '../stores/cart';
-import { db, collection, query, where, orderBy, limit, onSnapshot, Timestamp, doc, updateDoc, handleFirestoreError, OperationType } from '../firebase';
+import { db, collection, query, where, orderBy, limit, getDocs, getDoc, Timestamp, doc, updateDoc, handleFirestoreError, OperationType } from '../firebase';
 import type { Order, OrderStatus } from '../types';
 import { toast } from 'vue-sonner';
 
@@ -30,9 +31,9 @@ const selectedOrder = ref<Order | null>(null);
 const orderToCancel = ref<Order | null>(null);
 const isCancelling = ref(false);
 const isUpdatingLocation = ref(false);
+const isRefreshing = ref<string | null>(null);
 const orderLimit = ref(3);
 const hasMoreOrders = ref(true);
-let unsubscribe: (() => void) | null = null;
 
 const updateOrderLocation = async (order: Order) => {
   isUpdatingLocation.value = true;
@@ -98,81 +99,78 @@ const proceedCancel = async () => {
   }
 };
 
-const setupRealtimeOrders = () => {
+const fetchOrders = async () => {
   if (!authStore.user) return;
   
   loading.value = true;
   
-  if (unsubscribe) {
-    unsubscribe();
-  }
+  try {
+    const q = query(
+      collection(db, 'orders'),
+      where('userId', '==', authStore.user.uid),
+      orderBy('createdAt', 'desc'),
+      limit(orderLimit.value)
+    );
 
-  const q = query(
-    collection(db, 'orders'),
-    where('userId', '==', authStore.user.uid),
-    orderBy('createdAt', 'desc'),
-    limit(orderLimit.value)
-  );
-
-  unsubscribe = onSnapshot(q, (snapshot) => {
-    const newOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
-    
+    const snapshot = await getDocs(q);
+    orders.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
     hasMoreOrders.value = snapshot.docs.length === orderLimit.value;
-    
-    // Check for status changes to show toast
-    if (!loading.value && orders.value.length > 0) {
-      newOrders.forEach(newOrder => {
-        const oldOrder = orders.value.find(o => o.id === newOrder.id);
-        if (oldOrder && oldOrder.status !== newOrder.status) {
-          showStatusToast(newOrder);
-          
-          // Update selected order if it's the one that changed
-          if (selectedOrder.value && selectedOrder.value.id === newOrder.id) {
-            selectedOrder.value = { ...newOrder };
-          }
-        }
-      });
-    }
-
-    orders.value = newOrders;
-    loading.value = false;
-  }, (error) => {
-    console.error('Error listening to orders', error);
+  } catch (error) {
+    console.error('Error fetching orders', error);
     toast.error('Có lỗi xảy ra khi tải lịch sử đơn hàng');
+  } finally {
     loading.value = false;
-  });
+  }
+};
+
+const refreshOrderStatus = async (orderId: string) => {
+  if (isRefreshing.value) return;
+  isRefreshing.value = orderId;
+  
+  try {
+    const orderDoc = await getDoc(doc(db, 'orders', orderId));
+    if (orderDoc.exists()) {
+      const orderData = orderDoc.data() as Order;
+      
+      // Update in local list
+      const index = orders.value.findIndex(o => o.id === orderId);
+      if (index !== -1) {
+        if (orders.value[index].status !== orderData.status) {
+          orders.value[index].status = orderData.status;
+          showStatusToast(orders.value[index]);
+          
+          if (selectedOrder.value?.id === orderId) {
+            selectedOrder.value = { ...selectedOrder.value, status: orderData.status };
+          }
+        } else {
+          toast.success('Trạng thái đơn hàng chưa thay đổi', { duration: 2000 });
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error refreshing order', error);
+    toast.error('Không thể cập nhật trạng thái');
+  } finally {
+    isRefreshing.value = null;
+  }
 };
 
 const loadMoreOrders = () => {
   orderLimit.value += 3;
-  setupRealtimeOrders();
+  fetchOrders();
 };
 
 const showStatusToast = (order: Order) => {
-  const statusLabels: Record<OrderStatus, string> = {
-    'pending': 'đang chờ xác nhận',
-    'processing': 'đang được xử lý',
-    'delivering': 'đang được giao đi',
-    'completed': 'đã hoàn thành',
-    'cancelled': 'đã bị hủy'
-  };
-
-  const label = statusLabels[order.status] || order.status;
+  const label = getStatusLabel(order.status);
   
-  toast.info(`Đơn hàng #${order.id.slice(-6).toUpperCase()} ${label}`, {
-    description: 'Trạng thái đơn hàng của bạn vừa được cập nhật.',
+  toast.info(`Đơn hàng #${order.id.slice(-6).toUpperCase()} ${label.toLowerCase()}`, {
+    description: 'Trạng thái đơn hàng vừa được cập nhật.',
     duration: 5000,
   });
 };
 
 onMounted(() => {
-  setupRealtimeOrders();
-});
-
-onUnmounted(() => {
-  if (unsubscribe) {
-    unsubscribe();
-  }
+  fetchOrders();
 });
 
 const getStatusColor = (status: OrderStatus) => {
@@ -290,13 +288,22 @@ const formatDate = (timestamp: Timestamp) => {
               <p class="font-black text-gray-900 uppercase tracking-tight">#{{ order.id.slice(-6).toUpperCase() }}</p>
               <p class="text-[10px] text-gray-400 font-bold tracking-tight">{{ formatDate(order.createdAt) }}</p>
             </div>
-            <div :class="['px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-colors duration-500', getStatusColor(order.status)]">
-              <component :is="getStatusIcon(order.status)" :size="12" />
-              <transition name="fade-status" mode="out-in">
-                <span :key="order.status">
-                  {{ getStatusLabel(order.status) }}
-                </span>
-              </transition>
+            <div class="flex items-center gap-2">
+              <div :class="['px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-colors duration-500', getStatusColor(order.status)]">
+                <component :is="getStatusIcon(order.status)" :size="12" />
+                <transition name="fade-status" mode="out-in">
+                  <span :key="order.status">
+                    {{ getStatusLabel(order.status) }}
+                  </span>
+                </transition>
+              </div>
+              <button 
+                @click.stop="refreshOrderStatus(order.id)"
+                class="w-8 h-8 rounded-full bg-gray-50 text-gray-400 flex items-center justify-center hover:bg-orange-50 hover:text-orange-600 transition-colors border border-gray-100"
+                title="Cập nhật trạng thái"
+              >
+                <RefreshCw :size="14" :class="{'animate-spin text-orange-600': isRefreshing === order.id}" />
+              </button>
             </div>
           </div>
 
@@ -372,13 +379,22 @@ const formatDate = (timestamp: Timestamp) => {
             </div>
             <div class="flex justify-between items-center">
               <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Trạng thái</span>
-              <div :class="['px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1 transition-colors duration-500', getStatusColor(selectedOrder.status)]">
-                <component :is="getStatusIcon(selectedOrder.status)" :size="12" />
-                <transition name="fade-status" mode="out-in">
-                  <span :key="selectedOrder.status">
-                    {{ getStatusLabel(selectedOrder.status) }}
-                  </span>
-                </transition>
+              <div class="flex items-center gap-2">
+                <div :class="['px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1 transition-colors duration-500', getStatusColor(selectedOrder.status)]">
+                  <component :is="getStatusIcon(selectedOrder.status)" :size="12" />
+                  <transition name="fade-status" mode="out-in">
+                    <span :key="selectedOrder.status">
+                      {{ getStatusLabel(selectedOrder.status) }}
+                    </span>
+                  </transition>
+                </div>
+                <button 
+                  @click.stop="refreshOrderStatus(selectedOrder.id)"
+                  class="w-6 h-6 rounded-full bg-white text-gray-400 flex items-center justify-center hover:bg-orange-50 hover:text-orange-600 transition-colors border border-gray-200"
+                  title="Cập nhật trạng thái"
+                >
+                  <RefreshCw :size="12" :class="{'animate-spin text-orange-600': isRefreshing === selectedOrder.id}" />
+                </button>
               </div>
             </div>
             <div class="flex justify-between items-center">
