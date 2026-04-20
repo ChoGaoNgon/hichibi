@@ -11,15 +11,16 @@ Hệ thống chia làm 4 vai trò chính:
   - Quản lý sản phẩm (thêm, sửa, xóa, ghi chú). Tích hợp tìm kiếm thông minh và lọc theo danh mục.
   - Quản lý danh mục sản phẩm (Hỗ trợ tìm kiếm nhanh).
   - Quản lý mã giảm giá (Vouchers) với các điều kiện áp dụng.
-  - Quản lý Ghi chú nhanh (Quick Notes): Thiết lập các ghi chú mẫu giúp khách hàng chọn nhanh khi đặt món.
+  - Quản lý Ghi chú nhanh (Quick Notes): Thiết lập các ghi chú mẫu giúp khách hàng chọn nhanh khi đặt món. Hỗ trợ thêm/sửa/xóa linh hoạt.
   - Quản lý người dùng và phân quyền (Admin, Staff, Tablet, Customer).
   - Xem Báo cáo/Thống kê nâng cao (Zero-read Analytics) tích hợp Google Apps Script qua Iframe: Hiển thị bộ lọc ngày, KPI (Doanh thu, đơn hoàn thành, đơn chờ), biểu đồ tăng trưởng và bảng chi tiết doanh thu thẳng trên web mà không tốn chi phí Firestore Reads.
   - Cấu hình thông tin cửa hàng (Tên, địa chỉ, SĐT, mạng xã hội).
   - Cấu hình **Telegram Bot** để nhận thông báo đơn hàng mới.
   - Cấu hình **Google Sheets Sync** để tự động đồng bộ đơn hàng sang bảng tính.
   - Quản lý **Google Calendar** để tạo, xóa và theo dõi lịch làm việc, sự kiện lặp lại, mời khách tham dự.
-  - Quản lý **Cache hệ thống** giúp tối ưu hóa chi phí đọc Database bên Firestore một cách chủ động hoặc tự động.
+  - Quản lý **Cache hệ thống** giúp tối ưu hóa chi phí đọc Database bên Firestore một cách chủ động hoặc tự động (Toggle Auto/Manual).
   - Khởi tạo dữ liệu mẫu (Seed Data).
+  - **Sao chép Topping nhanh**: Cho phép quét và sao chép danh sách Topping từ các sản phẩm khác để tái sử dụng nhanh chóng.
 
 - **Staff (Nhân viên)**:
   - Quản lý đơn hàng: Xử lý thao tác với tốc độ tức thời. Danh sách đơn lấy theo cơ chế Fetched Data chủ động qua các nút Làm mới (Refresh) nhằm tiết kiệm giới hạn đọc (Reads).

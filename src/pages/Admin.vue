@@ -30,7 +30,8 @@ import {
   CreditCard,
   Lock,
   Unlock,
-  Tag
+  Tag,
+  Copy
 } from 'lucide-vue-next';
 import { 
   db, 
@@ -481,6 +482,59 @@ const generateVoucherCode = () => {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   voucherForm.value.code = code;
+};
+
+// Copy Topping Logic
+const isCopyToppingModalOpen = ref(false);
+const toppingSearchQuery = ref('');
+const selectedToppingsToCopy = ref<any[]>([]);
+
+const availableUniqueToppings = computed(() => {
+  const toppingsMap = new Map();
+  // Using products from memory (paginated or filtered)
+  products.value.forEach(p => {
+    if (p.options?.toppings) {
+      p.options.toppings.forEach(t => {
+        const key = `${t.name}-${t.price}`;
+        if (!toppingsMap.has(key)) {
+          toppingsMap.set(key, { ...t, fromProduct: p.name });
+        }
+      });
+    }
+  });
+  
+  let result = Array.from(toppingsMap.values());
+  if (toppingSearchQuery.value) {
+    const q = toppingSearchQuery.value.toLowerCase().trim();
+    result = result.filter(t => t.name.toLowerCase().includes(q));
+  }
+  return result;
+});
+
+const openCopyToppingModal = () => {
+  toppingSearchQuery.value = '';
+  selectedToppingsToCopy.value = [];
+  isCopyToppingModalOpen.value = true;
+};
+
+const toggleToppingSelection = (topping: any) => {
+  const index = selectedToppingsToCopy.value.findIndex(t => t.name === topping.name && t.price === topping.price);
+  if (index === -1) {
+    selectedToppingsToCopy.value.push(topping);
+  } else {
+    selectedToppingsToCopy.value.splice(index, 1);
+  }
+};
+
+const applyCopiedToppings = () => {
+  selectedToppingsToCopy.value.forEach(t => {
+    // Check if topping already exists in current product mapping to avoid duplicates
+    const exists = productForm.value.options.toppings.some(et => et.name === t.name);
+    if (!exists) {
+      productForm.value.options.toppings.push({ name: t.name, price: t.price });
+    }
+  });
+  isCopyToppingModalOpen.value = false;
 };
 
 const searchProducts = async () => {
@@ -2402,9 +2456,14 @@ const seedData = async () => {
             <div class="space-y-4">
               <div class="flex justify-between items-center">
                 <label class="text-[10px] text-gray-400 font-black uppercase tracking-widest">Toppings</label>
-                <button @click="addTopping" class="text-orange-600 font-black text-[10px] uppercase tracking-widest flex items-center gap-1">
-                  <Plus :size="14" /> Thêm topping
-                </button>
+                <div class="flex gap-4">
+                  <button @click="openCopyToppingModal" class="text-blue-600 font-black text-[10px] uppercase tracking-widest flex items-center gap-1 group">
+                    <Copy :size="14" class="group-hover:scale-110 transition-transform" /> Sao chép từ SP khác
+                  </button>
+                  <button @click="addTopping" class="text-orange-600 font-black text-[10px] uppercase tracking-widest flex items-center gap-1 group">
+                    <Plus :size="14" class="group-hover:scale-110 transition-transform" /> Thêm topping
+                  </button>
+                </div>
               </div>
               <div class="space-y-3">
                 <div v-for="(topping, index) in productForm.options.toppings" :key="index" class="flex gap-3 items-center">
@@ -2781,6 +2840,90 @@ const seedData = async () => {
             <button @click="saveQuickNote" :disabled="isSavingNote" class="flex-grow py-4 bg-orange-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-orange-700 transition-all shadow-xl shadow-orange-600/30 disabled:opacity-50 flex items-center justify-center gap-2">
               <div v-if="isSavingNote" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               {{ isSavingNote ? 'Đang lưu...' : 'Lưu ghi chú' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Copy Topping Modal -->
+    <transition
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="opacity-0 scale-95"
+      enter-to-class="opacity-100 scale-100"
+      leave-active-class="transition duration-200 ease-in"
+      leave-from-class="opacity-100 scale-100"
+      leave-to-class="opacity-0 scale-95"
+    >
+      <div v-if="isCopyToppingModalOpen" class="fixed inset-0 z-[120] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="isCopyToppingModalOpen = false"></div>
+        <div class="relative bg-white w-full max-w-lg rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+          <div class="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <div>
+              <h3 class="text-xl font-black text-gray-900 uppercase tracking-tighter">Sao chép Topping</h3>
+              <p class="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1">Chọn từ danh sách các topping đã có</p>
+            </div>
+            <button @click="isCopyToppingModalOpen = false" class="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+              <XCircle :size="24" class="text-gray-400" />
+            </button>
+          </div>
+
+          <div class="p-6 border-b border-gray-100">
+            <div class="flex items-center gap-3 bg-gray-50 px-5 py-3 rounded-2xl">
+              <Search :size="16" class="text-gray-400" />
+              <input 
+                v-model="toppingSearchQuery" 
+                type="text" 
+                placeholder="Tìm tên topping..." 
+                class="text-sm font-bold bg-transparent border-none focus:ring-0 w-full"
+              />
+            </div>
+          </div>
+
+          <div class="flex-grow overflow-y-auto p-6 space-y-2 no-scrollbar">
+            <div v-if="availableUniqueToppings.length === 0" class="text-center py-10">
+              <Database :size="40" class="mx-auto text-gray-200 mb-4" />
+              <p class="text-gray-400 font-bold text-sm">Không tìm thấy topping nào</p>
+            </div>
+            <button 
+              v-for="topping in availableUniqueToppings" 
+              :key="topping.name + topping.price"
+              @click="toggleToppingSelection(topping)"
+              class="w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all group"
+              :class="selectedToppingsToCopy.some(t => t.name === topping.name) 
+                ? 'border-orange-600 bg-orange-50' 
+                : 'border-gray-50 hover:border-gray-200 bg-white'"
+            >
+              <div class="flex flex-col items-start">
+                <span class="font-black text-sm uppercase tracking-tight" :class="selectedToppingsToCopy.some(t => t.name === topping.name) ? 'text-orange-600' : 'text-gray-900'">
+                  {{ topping.name }}
+                </span>
+                <span class="text-[10px] text-gray-400 font-bold italic">Từ: {{ topping.fromProduct }}</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="font-black text-sm text-gray-900">+{{ topping.price.toLocaleString() }}đ</span>
+                <div 
+                  class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all"
+                  :class="selectedToppingsToCopy.some(t => t.name === topping.name) 
+                    ? 'bg-orange-600 border-orange-600 text-white' 
+                    : 'border-gray-200 group-hover:border-gray-300'"
+                >
+                  <CheckCircle v-if="selectedToppingsToCopy.some(t => t.name === topping.name)" :size="14" />
+                </div>
+              </div>
+            </button>
+          </div>
+
+          <div class="p-6 bg-gray-50 border-t border-gray-100 flex gap-4">
+            <button @click="isCopyToppingModalOpen = false" class="flex-grow py-4 bg-white border border-gray-200 text-gray-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-100 transition-all">
+              Hủy
+            </button>
+            <button 
+              @click="applyCopiedToppings" 
+              :disabled="selectedToppingsToCopy.length === 0"
+              class="flex-grow py-4 bg-orange-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-orange-700 transition-all shadow-xl shadow-orange-600/30 disabled:opacity-50"
+            >
+              Chọn {{ selectedToppingsToCopy.length }} Topping
             </button>
           </div>
         </div>

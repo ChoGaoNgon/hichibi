@@ -74,7 +74,12 @@ Hệ thống sử dụng cơ chế **Hybrid Data Fetching** (kết hợp lấy d
     *   **Security Check**: Firebase Security Rules kiểm tra nghiêm ngặt người dùng có quyền `staff` hoặc `admin` thật sự không trước khi cho phép ghi/sửa.
 3.  **In hóa đơn và Tem nhãn**:
     *   **In hóa đơn**: Hàm `printOrder()` lấy dữ liệu đơn hàng hiện tại, tạo một template HTML in ấn thu nhỏ (Receipt) phù hợp cho máy in nhiệt và gọi lệnh `window.print()`.
-    *   **In tem nhãn (Label Printing)**: Hàm `printOrderLabels()` tạo các trang in khổ 50x30mm cho từng sản phẩm trong đơn hàng. Mỗi tem chứa tên món, size, topping và ghi chú riêng biệt, giúp pha chế dán trực tiếp lên cốc/hộp. Sử dụng CSS `page-break-after: always` để tách riêng từng tem.
+    *   **In tem nhãn (Label Printing)**: Hàm `printOrderLabels()` tạo các trang in khổ 50x30mm cho từng sản phẩm trong đơn hàng. Mỗi tem chứa tên món, size, topping và ghi chú riêng biệt, giúp pha chế dán trực tiếp lên cốc/hộp. Sử dụng CSS `page-break-after: always` để tách riêng từng tem. Thông tin dư thừa (Store Name, Time, Order ID) được loại bỏ để tối đa hóa diện tích hiển thị thông tin món.
+
+4.  **Sao chép Topping (Client-Side Scanning)**:
+    *   Hệ thống không lưu trữ bảng "Topping mẫu" riêng biệt để tiết kiệm Reads/Writes.
+    *   Thay vào đó, khi Admin nhấn "Sao chép Topping", hệ thống thực hiện quét (scanning) toàn bộ danh sách sản phẩm hiện có trong bộ nhớ (Computed Property `availableUniqueToppings`), trích xuất các object topping độc nhất dựa trên bộ đôi `{name, price}`.
+    *   Cơ chế này cho phép tái sử dụng dữ liệu Topping đã định nghĩa ở bất kỳ sản phẩm nào mà không tốn chi phí truy vấn Database bổ sung.
 
 ---
 

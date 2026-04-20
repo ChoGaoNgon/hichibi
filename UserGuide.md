@@ -74,6 +74,7 @@ Hệ thống tích hợp một Dashboard báo cáo nâng cao (sử dụng 100% c
 
 ### Quản lý Danh mục và Sản phẩm (Tích hợp Smart Search mới)
 - Bạn có thể **Thêm / Sửa / Khóa bán (ngừng bán)** linh hoạt.
+- **Sao chép Topping nhanh**: Khi thêm hoặc sửa sản phẩm, thay vì phải nhập thủ công từng loại topping đã từng có ở sản phẩm khác, bạn có thể nhấn nút **"Sao chép từ SP khác"**. Hệ thống sẽ hiển thị danh sách tất cả các topping độc nhất hiện có để bạn chọn và áp dụng ngay lập tức.
 - **Tính năng Tìm kiếm**: 
    - Danh mục: Tìm thẳng vào Tên và lọc.
    - Sản phẩm: Bạn có vô vàn SP? Chỉ cần nhập tên vào thanh tìm kiếm lớn bên trên góc màn hình Quản lý Sản phẩm, hoặc dùng Ô Lọc chọn sẵn đúng 1 Danh mục cần tìm. Hệ thống tối ưu không load đè lên bộ nhớ RAM. Nhấn nút "Tìm Kiếm" màu đen để thực hiện lệnh. 
@@ -86,6 +87,7 @@ Hệ thống tích hợp một Dashboard báo cáo nâng cao (sử dụng 100% c
 ### Quản lý Ghi chú nhanh (Quick Notes)
 - Admin có thể thiết lập danh sách các ghi chú phổ biến (vd: "Ít đường", "Nhiều sữa", "Không đá"...) để giúp khách hàng đặt món nhanh hơn mà không cần gõ phím.
 - Các ghi chú này sẽ hiển thị dưới dạng nút bấm tiện lợi ở cả màn hình Chọn món và màn hình Giỏ hàng của khách.
+- **Thao tác linh hoạt**: Người quản trị có thể Thêm mới, Chỉnh sửa nội dung hoặc Xóa bỏ các ghi chú không còn sử dụng một cách dễ dàng ngay tại giao diện quản lý.
 
 ### Quản lý Cache Hệ thống (Cache Management)
 Lần đầu tiên tính năng này xuất hiện trao quyền quyết định tốc độ cho Admin:
