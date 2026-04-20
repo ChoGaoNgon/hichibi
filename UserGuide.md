@@ -19,10 +19,12 @@ Màn hình khách hàng (`/`) là giao diện mặc định mà mọi người d
 ### B. Thêm vào Giỏ hàng
 - Click vào hình sản phẩm muốn uống. Một Modal (hộp thoại) sẽ hiện ra.
 - Trong hộp thoại này, hãy lựa chọn thêm **kích cỡ (Size)** và **topping**. Hệ thống tự động tính lại tổng tiền.
+- **Ghi chú riêng cho món:** Bạn có thể chọn các ghi chú nhanh (vd: Ít đường, Không đá) hoặc tự nhập yêu cầu riêng cho sản phẩm này ngay tại đây.
 - Bấm **Thêm vào giỏ**. Thao tác này có thể làm n lần cho các món khác nhau.
 
 ### C. Quản lý Giỏ hàng và Thanh toán (Checkout)
 - Nhấn vào biểu tượng túi xách trên đỉnh màn hình để duyệt tất cả các món đang có trong giỏ hàng.
+- **Chỉnh sửa ghi chú:** Mỗi món trong giỏ hàng đều hiển thị ghi chú đã nhập. Bạn có thể nhấn vào biểu tượng "Cây bút" để thay đổi hoặc bổ sung ghi chú bất cứ lúc nào trước khi thanh toán.
 - Nâng giảm số lượng, điều chỉnh tổng kết, hoặc nhập **Mã giảm giá (Voucher)** nếu cửa hàng bạn đang có.
 - Chạm vào nút **Tiến hành đặt hàng**. 
 - Tại màn hình thanh toán, chỉ định cách khách muốn lấy hàng: `Giao hàng tận nơi`, `Đến lấy` hay `Tại quán`. Hệ thống bắt buộc bạn điền địa chỉ hoặc liên hệ nếu đang ở xa, ngoại trừ trường hợp chọn "Tại quán".
@@ -65,10 +67,14 @@ Hệ thống tích hợp một Dashboard báo cáo nâng cao (sử dụng 100% c
 - Tab "Đơn Hàng" chứa danh sách toàn bộ các hoạt động mua bán của chuỗi. Cung cấp bộ lọc thông minh (Lọc theo trạng thái, lọc theo PT Giao).
 - Các thanh tìm kiếm ngay trên tiêu đề hỗ trợ tìm tên khách, số điện thoại hoặc gõ thẳng 6 ký tự đuôi Mã Đơn để xử lý nhanh.
 - **Thay đổi trạng thái:** Quản lý thay đổi tính trạng xử lý từ Chờ Xử Lý -> Đang Pha chế -> Đang Giao -> Hoàn Tất. Tất cả được lưu lại và thông báo tới thiết bị cá nhân của khách. 
+- **In ấn chuyên nghiệp:**
+    - **Nút "In đơn":** In hóa đơn thanh toán tổng hợp cho khách.
+    - **Nút "In tem":** In tem dán cốc khổ 50x30mm. Mỗi món trong đơn sẽ được in ra một tem riêng biệt chứa tên món, size, topping và ghi chú yêu cầu của khách để dán trực tiếp lên sản phẩm.
 - Ghi đè phương thức: (Ví dụ từ Tại quán sang Ship tùy vào hiện trạng). 
 
 ### Quản lý Danh mục và Sản phẩm (Tích hợp Smart Search mới)
 - Bạn có thể **Thêm / Sửa / Khóa bán (ngừng bán)** linh hoạt.
+- **Sao chép Topping nhanh**: Khi thêm hoặc sửa sản phẩm, thay vì phải nhập thủ công từng loại topping đã từng có ở sản phẩm khác, bạn có thể nhấn nút **"Sao chép từ SP khác"**. Hệ thống sẽ hiển thị danh sách tất cả các topping độc nhất hiện có để bạn chọn và áp dụng ngay lập tức.
 - **Tính năng Tìm kiếm**: 
    - Danh mục: Tìm thẳng vào Tên và lọc.
    - Sản phẩm: Bạn có vô vàn SP? Chỉ cần nhập tên vào thanh tìm kiếm lớn bên trên góc màn hình Quản lý Sản phẩm, hoặc dùng Ô Lọc chọn sẵn đúng 1 Danh mục cần tìm. Hệ thống tối ưu không load đè lên bộ nhớ RAM. Nhấn nút "Tìm Kiếm" màu đen để thực hiện lệnh. 
@@ -77,6 +83,11 @@ Hệ thống tích hợp một Dashboard báo cáo nâng cao (sử dụng 100% c
 ### Quản lý Ưu đãi (Vouchers)
 - Quản trị viên tự thiết lập chiến lược Mã giảm giá (Giảm % hoặc Giảm thẳng tiền). 
 - Trạng thái Active/Deactive quản lý ngay tại bảng để quyết định mở hay đóng cổng. Tiến độ sử dụng `usedCount` dễ dàng phân tích độ hot của Voucher. 
+
+### Quản lý Ghi chú nhanh (Quick Notes)
+- Admin có thể thiết lập danh sách các ghi chú phổ biến (vd: "Ít đường", "Nhiều sữa", "Không đá"...) để giúp khách hàng đặt món nhanh hơn mà không cần gõ phím.
+- Các ghi chú này sẽ hiển thị dưới dạng nút bấm tiện lợi ở cả màn hình Chọn món và màn hình Giỏ hàng của khách.
+- **Thao tác linh hoạt**: Người quản trị có thể Thêm mới, Chỉnh sửa nội dung hoặc Xóa bỏ các ghi chú không còn sử dụng một cách dễ dàng ngay tại giao diện quản lý.
 
 ### Quản lý Cache Hệ thống (Cache Management)
 Lần đầu tiên tính năng này xuất hiện trao quyền quyết định tốc độ cho Admin:

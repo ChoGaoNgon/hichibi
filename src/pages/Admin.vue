@@ -29,7 +29,9 @@ import {
   HardDrive,
   CreditCard,
   Lock,
-  Unlock
+  Unlock,
+  Tag,
+  Copy
 } from 'lucide-vue-next';
 import { 
   db, 
@@ -52,7 +54,7 @@ import {
   handleFirestoreError,
   serverTimestamp
 } from '../firebase';
-import type { Order, Product, Category, OrderStatus, DeliveryMethod } from '../types';
+import type { Order, Product, Category, OrderStatus, DeliveryMethod, QuickNote } from '../types';
 import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
@@ -108,6 +110,12 @@ const isUpdatingStatus = ref(false);
 const isUpdatingDelivery = ref(false);
 const isRefreshing = ref(false);
 const isClearingCache = ref(false);
+const isSavingNote = ref(false);
+
+const quickNotes = ref<QuickNote[]>([]);
+const editingNote = ref<QuickNote | null>(null);
+const quickNoteForm = ref({ text: '' });
+const isQuickNoteModalOpen = ref(false);
 
 const cacheConfig = ref({
   autoUpdate: true,
@@ -163,6 +171,57 @@ const triggerAutoCacheUpdate = () => {
   }
 };
 
+const fetchQuickNotes = async () => {
+  try {
+    const q = query(collection(db, 'quick_notes'), orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+    quickNotes.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as QuickNote));
+  } catch (error) {
+    console.error('Error fetching quick notes:', error);
+  }
+};
+
+const openQuickNoteModal = (note?: QuickNote) => {
+  if (note) {
+    editingNote.value = note;
+    quickNoteForm.value = { text: note.text };
+  } else {
+    editingNote.value = null;
+    quickNoteForm.value = { text: '' };
+  }
+  isQuickNoteModalOpen.value = true;
+};
+
+const saveQuickNote = async () => {
+  if (!quickNoteForm.value.text.trim()) return;
+  isSavingNote.value = true;
+  try {
+    if (editingNote.value) {
+      await updateDoc(doc(db, 'quick_notes', editingNote.value.id), {
+        text: quickNoteForm.value.text.trim()
+      });
+      toast.success('Đã cập nhật ghi chú nhanh');
+    } else {
+      await addDoc(collection(db, 'quick_notes'), {
+        text: quickNoteForm.value.text.trim(),
+        createdAt: serverTimestamp()
+      });
+      toast.success('Đã thêm ghi chú nhanh');
+    }
+    isQuickNoteModalOpen.value = false;
+    await fetchQuickNotes();
+  } catch (error) {
+    console.error('Error saving quick note:', error);
+    toast.error('Có lỗi xảy ra khi lưu ghi chú');
+  } finally {
+    isSavingNote.value = false;
+  }
+};
+
+const deleteQuickNote = (id: string) => {
+  confirmDelete(id, 'note');
+};
+
 const refreshData = async () => {
   if (isRefreshing.value) return;
   isRefreshing.value = true;
@@ -195,6 +254,9 @@ const refreshData = async () => {
       case 'cache':
         await fetchCacheConfig();
         break;
+      case 'notes':
+        await fetchQuickNotes();
+        break;
     }
     toast.success('Đã làm mới dữ liệu');
   } catch (error) {
@@ -223,12 +285,21 @@ const storeInfo = ref({
 });
 const isSavingStoreInfo = ref(false);
 const orderToPrint = ref<Order | null>(null);
+const orderForLabels = ref<Order | null>(null);
 
 const printOrder = (order: Order) => {
   orderToPrint.value = order;
   setTimeout(() => {
     window.print();
     orderToPrint.value = null;
+  }, 300);
+};
+
+const printOrderLabels = (order: Order) => {
+  orderForLabels.value = order;
+  setTimeout(() => {
+    window.print();
+    orderForLabels.value = null;
   }, 300);
 };
 
@@ -383,7 +454,8 @@ onMounted(async () => {
     fetchVouchers(),
     fetchUsers(),
     fetchStoreInfo(),
-    fetchCacheConfig()
+    fetchCacheConfig(),
+    fetchQuickNotes()
   ]);
   
   loading.value = false;
@@ -410,6 +482,59 @@ const generateVoucherCode = () => {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   voucherForm.value.code = code;
+};
+
+// Copy Topping Logic
+const isCopyToppingModalOpen = ref(false);
+const toppingSearchQuery = ref('');
+const selectedToppingsToCopy = ref<any[]>([]);
+
+const availableUniqueToppings = computed(() => {
+  const toppingsMap = new Map();
+  // Using products from memory (paginated or filtered)
+  products.value.forEach(p => {
+    if (p.options?.toppings) {
+      p.options.toppings.forEach(t => {
+        const key = `${t.name}-${t.price}`;
+        if (!toppingsMap.has(key)) {
+          toppingsMap.set(key, { ...t, fromProduct: p.name });
+        }
+      });
+    }
+  });
+  
+  let result = Array.from(toppingsMap.values());
+  if (toppingSearchQuery.value) {
+    const q = toppingSearchQuery.value.toLowerCase().trim();
+    result = result.filter(t => t.name.toLowerCase().includes(q));
+  }
+  return result;
+});
+
+const openCopyToppingModal = () => {
+  toppingSearchQuery.value = '';
+  selectedToppingsToCopy.value = [];
+  isCopyToppingModalOpen.value = true;
+};
+
+const toggleToppingSelection = (topping: any) => {
+  const index = selectedToppingsToCopy.value.findIndex(t => t.name === topping.name && t.price === topping.price);
+  if (index === -1) {
+    selectedToppingsToCopy.value.push(topping);
+  } else {
+    selectedToppingsToCopy.value.splice(index, 1);
+  }
+};
+
+const applyCopiedToppings = () => {
+  selectedToppingsToCopy.value.forEach(t => {
+    // Check if topping already exists in current product mapping to avoid duplicates
+    const exists = productForm.value.options.toppings.some(et => et.name === t.name);
+    if (!exists) {
+      productForm.value.options.toppings.push({ name: t.name, price: t.price });
+    }
+  });
+  isCopyToppingModalOpen.value = false;
 };
 
 const searchProducts = async () => {
@@ -793,7 +918,7 @@ const categoryForm = ref({
 
 // Delete Confirmation State
 const isDeleteConfirmOpen = ref(false);
-const itemToDelete = ref<{ id: string; type: 'product' | 'category' | 'voucher' } | null>(null);
+const itemToDelete = ref<{ id: string; type: 'product' | 'category' | 'voucher' | 'note' } | null>(null);
 
 const openProductModal = (product?: Product) => {
   if (product) {
@@ -954,7 +1079,7 @@ const saveCategory = async () => {
   }
 };
 
-const confirmDelete = (id: string, type: 'product' | 'category' | 'voucher') => {
+const confirmDelete = (id: string, type: 'product' | 'category' | 'voucher' | 'note') => {
   itemToDelete.value = { id, type };
   isDeleteConfirmOpen.value = true;
 };
@@ -966,10 +1091,18 @@ const executeDelete = async () => {
   isDeleting.value = true;
   try {
     const type = itemToDelete.value.type;
-    const collectionName = type === 'product' ? 'products' : type === 'category' ? 'categories' : 'vouchers';
+    const collectionName = 
+      type === 'product' ? 'products' : 
+      type === 'category' ? 'categories' : 
+      type === 'note' ? 'quick_notes' : 'vouchers';
+    
     await deleteDoc(doc(db, collectionName, itemToDelete.value.id));
     
-    const typeName = type === 'product' ? 'sản phẩm' : type === 'category' ? 'danh mục' : 'mã giảm giá';
+    const typeName = 
+      type === 'product' ? 'sản phẩm' : 
+      type === 'category' ? 'danh mục' : 
+      type === 'note' ? 'ghi chú' : 'mã giảm giá';
+    
     toast.success(`Đã xóa ${typeName}`);
     
     if (type === 'product') {
@@ -978,13 +1111,18 @@ const executeDelete = async () => {
       categories.value = categories.value.filter(c => c.id !== itemToDelete.value!.id);
     } else if (type === 'voucher') {
       vouchers.value = vouchers.value.filter(v => v.id !== itemToDelete.value!.id);
+    } else if (type === 'note') {
+      quickNotes.value = quickNotes.value.filter(n => n.id !== itemToDelete.value!.id);
     }
 
     triggerAutoCacheUpdate();
     isDeleteConfirmOpen.value = false;
     itemToDelete.value = null;
   } catch (error) {
-    const typeName = itemToDelete.value?.type === 'product' ? 'sản phẩm' : itemToDelete.value?.type === 'category' ? 'danh mục' : 'mã giảm giá';
+    const typeName = 
+      itemToDelete.value?.type === 'product' ? 'sản phẩm' : 
+      itemToDelete.value?.type === 'category' ? 'danh mục' : 
+      itemToDelete.value?.type === 'note' ? 'ghi chú' : 'mã giảm giá';
     console.error(`Error deleting ${itemToDelete.value?.type}`, error);
     toast.error(`Có lỗi xảy ra khi xóa ${typeName}`);
   } finally {
@@ -1217,6 +1355,7 @@ const seedData = async () => {
               { id: 'products', name: 'Sản phẩm', icon: Coffee },
               { id: 'categories', name: 'Danh mục', icon: Filter },
               { id: 'vouchers', name: 'Mã giảm giá', icon: Ticket },
+              { id: 'notes', name: 'Ghi chú nhanh', icon: AlertCircle },
               { id: 'users', name: 'Người dùng', icon: Users },
               { id: 'settings', name: 'Cửa hàng', icon: Store },
               { id: 'calendar', name: 'Lịch làm việc', icon: Calendar },
@@ -1380,13 +1519,24 @@ const seedData = async () => {
                       <p class="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">Tổng thanh toán</p>
                       <p class="text-3xl font-black text-gray-900 tracking-tighter">{{ (order.totalAmount || 0).toLocaleString() }}đ</p>
                     </div>
-                    <button 
-                      v-if="order.status !== 'cancelled'"
-                      @click="printOrder(order)"
-                      class="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all"
-                    >
-                      <Printer :size="14" /> In đơn
-                    </button>
+                    <div class="flex gap-2">
+                      <button 
+                        v-if="order.status !== 'cancelled'"
+                        @click="printOrder(order)"
+                        class="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all"
+                        title="In hóa đơn thanh toán"
+                      >
+                        <Printer :size="14" /> In đơn
+                      </button>
+                      <button 
+                        v-if="order.status !== 'cancelled'"
+                        @click="printOrderLabels(order)"
+                        class="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-all border border-blue-100"
+                        title="In tem nhãn 50x30mm cho từng món"
+                      >
+                        <Tag :size="14" /> In tem
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1446,6 +1596,10 @@ const seedData = async () => {
                           <span v-for="t in item.toppings" :key="t" class="text-[9px] bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest">
                             + {{ t }}
                           </span>
+                        </div>
+                        <div v-if="item.note" class="mt-1 flex items-start gap-1">
+                          <AlertCircle :size="8" class="text-orange-500 mt-0.5 flex-shrink-0" />
+                          <span class="text-[9px] text-gray-500 font-bold italic">Ghi chú: {{ item.note }}</span>
                         </div>
                       </div>
                     </div>
@@ -2084,6 +2238,55 @@ const seedData = async () => {
             </div>
           </div>
         </div>
+
+        <!-- Quick Notes Tab -->
+        <div v-if="activeTab === 'notes' && authStore.isAdmin" class="space-y-10">
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+            <div class="flex items-center gap-4">
+              <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">GHI CHÚ NHANH</h2>
+              <button 
+                @click="refreshData" 
+                :disabled="isRefreshing"
+                class="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 hover:text-orange-600 hover:bg-orange-50 hover:border-orange-100 transition-all disabled:opacity-50 flex-shrink-0"
+                title="Làm mới dữ liệu"
+              >
+                <RefreshCw :size="16" :class="{ 'animate-spin': isRefreshing }" />
+              </button>
+            </div>
+            
+            <button 
+              @click="openQuickNoteModal()" 
+              class="flex items-center gap-3 px-8 py-4 bg-orange-600 text-white rounded-3xl font-black text-sm uppercase tracking-widest hover:bg-orange-700 transition-all shadow-xl shadow-orange-600/30 flex-shrink-0"
+              title="Thêm ghi chú nhanh"
+            >
+              <Plus :size="20" /> Thêm ghi chú
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div
+              v-for="note in quickNotes"
+              :key="note.id"
+              class="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100 group hover:shadow-2xl transition-all duration-500 relative"
+            >
+              <p class="font-bold text-gray-900 leading-relaxed text-lg pr-12">{{ note.text }}</p>
+              
+              <div class="absolute top-6 right-6 flex flex-col gap-2 scale-50 group-hover:scale-100 opacity-0 group-hover:opacity-100 transition-all">
+                <button @click="openQuickNoteModal(note)" class="w-10 h-10 bg-white border border-gray-100 rounded-xl flex items-center justify-center text-gray-400 hover:text-orange-600 shadow-xl">
+                  <Edit :size="18" />
+                </button>
+                <button @click="deleteQuickNote(note.id)" class="w-10 h-10 bg-white border border-gray-100 rounded-xl flex items-center justify-center text-gray-400 hover:text-red-600 shadow-xl">
+                  <Trash2 :size="18" />
+                </button>
+              </div>
+            </div>
+
+            <div v-if="quickNotes.length === 0" class="col-span-full py-32 flex flex-col items-center justify-center text-center space-y-6 bg-white rounded-[50px] shadow-sm border border-gray-100 italic text-gray-400">
+               <AlertCircle :size="48" />
+               <p class="font-black uppercase tracking-widest text-xs">Chưa có ghi chú nhanh nào</p>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
 
@@ -2253,9 +2456,14 @@ const seedData = async () => {
             <div class="space-y-4">
               <div class="flex justify-between items-center">
                 <label class="text-[10px] text-gray-400 font-black uppercase tracking-widest">Toppings</label>
-                <button @click="addTopping" class="text-orange-600 font-black text-[10px] uppercase tracking-widest flex items-center gap-1">
-                  <Plus :size="14" /> Thêm topping
-                </button>
+                <div class="flex gap-4">
+                  <button @click="openCopyToppingModal" class="text-blue-600 font-black text-[10px] uppercase tracking-widest flex items-center gap-1 group">
+                    <Copy :size="14" class="group-hover:scale-110 transition-transform" /> Sao chép từ SP khác
+                  </button>
+                  <button @click="addTopping" class="text-orange-600 font-black text-[10px] uppercase tracking-widest flex items-center gap-1 group">
+                    <Plus :size="14" class="group-hover:scale-110 transition-transform" /> Thêm topping
+                  </button>
+                </div>
               </div>
               <div class="space-y-3">
                 <div v-for="(topping, index) in productForm.options.toppings" :key="index" class="flex gap-3 items-center">
@@ -2460,6 +2668,36 @@ const seedData = async () => {
       </div>
     </transition>
 
+    <!-- Printable Label Container (50x30mm) -->
+    <div v-if="orderForLabels" class="hidden print:block">
+      <div v-for="(item, i) in orderForLabels.items" :key="i" class="print-label-page">
+        <div class="print-label-content">
+          <!-- Item Header -->
+          <div class="flex justify-between items-start border-b border-black pb-1 mb-1">
+            <span class="font-black text-[12px] leading-tight break-words flex-grow pr-1">
+              {{ item.quantity }}x {{ item.name }}
+            </span>
+            <span class="font-bold text-[10px] whitespace-nowrap">({{ item.size }})</span>
+          </div>
+          
+          <!-- Price Info -->
+          <div class="flex justify-end text-[9px] mb-1 font-bold italic opacity-80">
+            <span>{{ (item.price * item.quantity).toLocaleString() }}đ</span>
+          </div>
+
+          <!-- Toppings -->
+          <div v-if="item.toppings?.length" class="text-[9px] leading-none mb-1 font-bold">
+            <span class="uppercase text-[8px]">Topping:</span> {{ item.toppings.join(', ') }}
+          </div>
+
+          <!-- Note -->
+          <div v-if="item.note" class="text-[9px] leading-[1.1] border-t border-dotted border-gray-400 pt-1 mt-auto font-medium">
+            <span class="font-black uppercase text-[8px]">Ghi chú:</span> {{ item.note }}
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Printable Order Receipt -->
     <div id="print-area"
         v-if="orderToPrint"
@@ -2562,21 +2800,179 @@ const seedData = async () => {
     </div>
 
 
+    <!-- Quick Note Modal -->
+    <transition
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition duration-200 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div v-if="isQuickNoteModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="isQuickNoteModalOpen = false"></div>
+        <div class="relative bg-white w-full max-w-md rounded-[40px] shadow-2xl overflow-hidden flex flex-col">
+          <div class="p-8 border-b border-gray-100 flex justify-between items-center">
+            <h3 class="text-2xl font-black text-gray-900 uppercase tracking-tighter">
+              {{ editingNote ? 'Sửa ghi chú' : 'Thêm ghi chú nhanh' }}
+            </h3>
+            <button @click="isQuickNoteModalOpen = false" class="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+              <XCircle :size="24" class="text-gray-400" />
+            </button>
+          </div>
+
+          <div class="p-8 space-y-6">
+            <div class="space-y-4">
+              <label class="text-[10px] text-gray-400 font-black uppercase tracking-widest">Nội dung ghi chú</label>
+              <textarea 
+                v-model="quickNoteForm.text" 
+                rows="4"
+                class="w-full p-4 bg-gray-50 border-none rounded-3xl font-bold focus:ring-2 focus:ring-orange-600 no-scrollbar" 
+                placeholder="Ví dụ: Ít đường, Không đá..."
+              ></textarea>
+            </div>
+          </div>
+
+          <div class="p-8 bg-gray-50 border-t border-gray-100 flex gap-4">
+            <button @click="isQuickNoteModalOpen = false" :disabled="isSavingNote" class="flex-grow py-4 bg-white border border-gray-200 text-gray-600 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-gray-100 transition-all disabled:opacity-50">
+              Hủy
+            </button>
+            <button @click="saveQuickNote" :disabled="isSavingNote" class="flex-grow py-4 bg-orange-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-orange-700 transition-all shadow-xl shadow-orange-600/30 disabled:opacity-50 flex items-center justify-center gap-2">
+              <div v-if="isSavingNote" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              {{ isSavingNote ? 'Đang lưu...' : 'Lưu ghi chú' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Copy Topping Modal -->
+    <transition
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="opacity-0 scale-95"
+      enter-to-class="opacity-100 scale-100"
+      leave-active-class="transition duration-200 ease-in"
+      leave-from-class="opacity-100 scale-100"
+      leave-to-class="opacity-0 scale-95"
+    >
+      <div v-if="isCopyToppingModalOpen" class="fixed inset-0 z-[120] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="isCopyToppingModalOpen = false"></div>
+        <div class="relative bg-white w-full max-w-lg rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+          <div class="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <div>
+              <h3 class="text-xl font-black text-gray-900 uppercase tracking-tighter">Sao chép Topping</h3>
+              <p class="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1">Chọn từ danh sách các topping đã có</p>
+            </div>
+            <button @click="isCopyToppingModalOpen = false" class="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+              <XCircle :size="24" class="text-gray-400" />
+            </button>
+          </div>
+
+          <div class="p-6 border-b border-gray-100">
+            <div class="flex items-center gap-3 bg-gray-50 px-5 py-3 rounded-2xl">
+              <Search :size="16" class="text-gray-400" />
+              <input 
+                v-model="toppingSearchQuery" 
+                type="text" 
+                placeholder="Tìm tên topping..." 
+                class="text-sm font-bold bg-transparent border-none focus:ring-0 w-full"
+              />
+            </div>
+          </div>
+
+          <div class="flex-grow overflow-y-auto p-6 space-y-2 no-scrollbar">
+            <div v-if="availableUniqueToppings.length === 0" class="text-center py-10">
+              <Database :size="40" class="mx-auto text-gray-200 mb-4" />
+              <p class="text-gray-400 font-bold text-sm">Không tìm thấy topping nào</p>
+            </div>
+            <button 
+              v-for="topping in availableUniqueToppings" 
+              :key="topping.name + topping.price"
+              @click="toggleToppingSelection(topping)"
+              class="w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all group"
+              :class="selectedToppingsToCopy.some(t => t.name === topping.name) 
+                ? 'border-orange-600 bg-orange-50' 
+                : 'border-gray-50 hover:border-gray-200 bg-white'"
+            >
+              <div class="flex flex-col items-start">
+                <span class="font-black text-sm uppercase tracking-tight" :class="selectedToppingsToCopy.some(t => t.name === topping.name) ? 'text-orange-600' : 'text-gray-900'">
+                  {{ topping.name }}
+                </span>
+                <span class="text-[10px] text-gray-400 font-bold italic">Từ: {{ topping.fromProduct }}</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="font-black text-sm text-gray-900">+{{ topping.price.toLocaleString() }}đ</span>
+                <div 
+                  class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all"
+                  :class="selectedToppingsToCopy.some(t => t.name === topping.name) 
+                    ? 'bg-orange-600 border-orange-600 text-white' 
+                    : 'border-gray-200 group-hover:border-gray-300'"
+                >
+                  <CheckCircle v-if="selectedToppingsToCopy.some(t => t.name === topping.name)" :size="14" />
+                </div>
+              </div>
+            </button>
+          </div>
+
+          <div class="p-6 bg-gray-50 border-t border-gray-100 flex gap-4">
+            <button @click="isCopyToppingModalOpen = false" class="flex-grow py-4 bg-white border border-gray-200 text-gray-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-100 transition-all">
+              Hủy
+            </button>
+            <button 
+              @click="applyCopiedToppings" 
+              :disabled="selectedToppingsToCopy.length === 0"
+              class="flex-grow py-4 bg-orange-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-orange-700 transition-all shadow-xl shadow-orange-600/30 disabled:opacity-50"
+            >
+              Chọn {{ selectedToppingsToCopy.length }} Topping
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
 <style scoped>
 @media print {
   @page {
-    size: 74mm 105mm;
     margin: 0;
   }
+  
   html, body {
-    width: 74mm;
-    height: 105mm;
     margin: 0;
     padding: 0;
     background: white;
+  }
+
+  /* Specific styles for Receipt */
+  #print-area {
+    width: 74mm;
+    margin: 0 auto;
+  }
+
+  /* Specific styles for Labels */
+  .print-label-page {
+    width: 50mm;
+    height: 30mm;
+    padding: 2mm 3mm;
+    page-break-after: always;
+    position: relative;
+    overflow: hidden;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    color: black !important;
+  }
+
+  .print-label-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Hide scrollbars during print */
+  ::-webkit-scrollbar {
+    display: none;
   }
 }
 </style>

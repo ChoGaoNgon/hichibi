@@ -32,6 +32,9 @@ A multi-platform (Mobile, Tablet, Desktop) web application for ordering and mana
 - **Roles:** `admin`, `staff`, `tablet`, `customer`.
 - **Enforcement:** Role checks must be done at the UI level (`v-if="authStore.isAdmin"`), Router level (`beforeEach` guards), and Firestore Security Rules.
 - **Tablet Mode:** The `/tablet` route is a fast-POS mode. It skips customer info requirements and goes straight to check out and print bills.
+- **Printing:** Supports thermal/receipt printing (74mm) and individual item labels (50x30mm) with item-specific notes and toppings. Labels are optimized to show preparation details only (no Store/Order/Time info).
+- **Product Management:** Includes a **Topping Copy** feature that performs client-side unique scanning of existing products to suggest toppings for new ones, minimizing database dependency.
+- **Quick Notes:** Fully manageable (CRUD) via Admin with instantaneous local UI updates following Firestore operations.
 
 ## 4. Firestore Database Structure
 
@@ -41,9 +44,11 @@ Always adhere to this document structure when writing queries or types:
 2. **`categories`**: `{ name, slug, order, image }`
 3. **`products`**: `{ name, description, price, image, category, isAvailable, isTrending, options: { sizes, toppings } }`
 4. **`orders`**: `{ userId, customerName, customerPhone, items, totalAmount, subtotal, status, deliveryMethod, address, note, createdAt, updatedAt, paymentMethod }`
+    - *`items` array items include:* `{ productId, name, quantity, price, size, toppings, note }`
     - *Statuses:* `pending` -> `processing` -> `delivering` -> `completed` (or `cancelled`).
 5. **`vouchers`**: `{ code, discountType, discountValue, minOrderAmount, maxUsage, usedCount, startDate, endDate, isActive }`
-6. **`settings`**:
+6. **`quick_notes`**: `{ text, createdAt, updatedAt }` - For pre-defined item notes.
+7. **`settings`**:
     - `store_info`: Store metadata, social links, `telegramBotToken`, `googleSheetsUrl`.
     - `cache_info`: `{ lastUpdated, autoUpdate }`.
 

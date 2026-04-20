@@ -52,6 +52,13 @@ export interface CartItem {
   size?: string;
   toppings: string[];
   image: string;
+  note?: string;
+}
+
+export interface QuickNote {
+  id: string;
+  text: string;
+  createdAt: Timestamp;
 }
 
 export type OrderStatus = 'pending' | 'processing' | 'delivering' | 'completed' | 'cancelled';

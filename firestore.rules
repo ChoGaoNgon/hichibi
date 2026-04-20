@@ -86,6 +86,11 @@ service cloud.firestore {
              data.isActive is bool;
     }
 
+    function isValidQuickNote(data) {
+      return data.keys().hasAll(['text']) &&
+             data.text is string && data.text.size() > 0 && data.text.size() < 500;
+    }
+
     // Rules
     match /users/{userId} {
       allow read: if isOwner(userId) || isStaff();
@@ -117,6 +122,12 @@ service cloud.firestore {
       allow create: if isStaff() && isValidVoucher(request.resource.data);
       allow update: if (isStaff() && isValidVoucher(request.resource.data)) || 
                        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['usedCount']) && request.resource.data.usedCount == resource.data.usedCount + 1);
+      allow delete: if isAdmin();
+    }
+
+    match /quick_notes/{noteId} {
+      allow read: if true;
+      allow create, update: if isStaff() && isValidQuickNote(request.resource.data);
       allow delete: if isAdmin();
     }
 

@@ -28,9 +28,15 @@ export const useCartStore = defineStore('cart', () => {
     }
   };
 
+  const updateItemNote = (index: number, note: string) => {
+    if (cart.value[index]) {
+      cart.value[index].note = note;
+    }
+  };
+
   const clearCart = () => {
     cart.value = [];
   };
 
-  return { cart, deliveryMethod, totalItems, totalPrice, setDeliveryMethod, addToCart, removeFromCart, updateQuantity, clearCart };
+  return { cart, deliveryMethod, totalItems, totalPrice, setDeliveryMethod, addToCart, removeFromCart, updateQuantity, updateItemNote, clearCart };
 });

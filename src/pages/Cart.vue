@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { 
   Trash2, 
@@ -15,10 +15,14 @@ import {
   Utensils,
   X,
   AlertTriangle,
-  Check
+  Check,
+  Edit,
+  AlertCircle
 } from 'lucide-vue-next';
 import { useCartStore } from '../stores/cart';
 import { useAuthStore } from '../stores/auth';
+import { db, collection, query, orderBy, getDocs } from '../firebase';
+import type { QuickNote } from '../types';
 
 const cartStore = useCartStore();
 const authStore = useAuthStore();
@@ -27,6 +31,57 @@ const router = useRouter();
 const isConfirmModalOpen = ref(false);
 const isDeliveryPopupOpen = ref(false);
 const itemIndexToRemove = ref<number | null>(null);
+
+const isNoteModalOpen = ref(false);
+const editingItemIndex = ref<number | null>(null);
+const currentItemNote = ref('');
+const quickNotes = ref<QuickNote[]>([]);
+
+onMounted(async () => {
+  // Load quick notes from cache or fetch from firebase
+  const localCacheStr = localStorage.getItem('menu_cache');
+  if (localCacheStr) {
+    try {
+      const localCache = JSON.parse(localCacheStr);
+      quickNotes.value = localCache.quickNotes || [];
+    } catch (e) {
+      console.error('Error parsing local cache', e);
+    }
+  }
+
+  // Fetch fresh quick notes
+  try {
+    const q = query(collection(db, 'quick_notes'), orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+    quickNotes.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as QuickNote));
+  } catch (error) {
+    console.error('Error fetching quick notes:', error);
+  }
+});
+
+const openNoteModal = (index: number) => {
+  editingItemIndex.value = index;
+  currentItemNote.value = cartStore.cart[index].note || '';
+  isNoteModalOpen.value = true;
+};
+
+const saveItemNote = () => {
+  if (editingItemIndex.value !== null) {
+     cartStore.updateItemNote(editingItemIndex.value, currentItemNote.value.trim());
+     isNoteModalOpen.value = false;
+     editingItemIndex.value = null;
+  }
+};
+
+const toggleQuickNote = (text: string) => {
+  const currentNotes = currentItemNote.value.split(',').map(n => n.trim()).filter(n => n !== '');
+  if (currentNotes.includes(text)) {
+    currentItemNote.value = currentNotes.filter(n => n !== text).join(', ');
+  } else {
+    currentNotes.push(text);
+    currentItemNote.value = currentNotes.join(', ');
+  }
+};
 
 const requestRemove = (index: number) => {
   itemIndexToRemove.value = index;
@@ -120,14 +175,37 @@ const selectDeliveryMethod = async (method: 'delivery' | 'pickup' | 'dine-in') =
                 <div>
                   <h3 class="font-black text-xs text-gray-900 uppercase tracking-tight line-clamp-1">{{ item.name }}</h3>
                   <p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Size: {{ item.size }}</p>
+                  <p v-if="item.toppings && item.toppings.length" class="text-[8px] text-orange-600 font-bold uppercase tracking-widest leading-tight mt-0.5">
+                    + {{ item.toppings.join(', ') }}
+                  </p>
                 </div>
-                <button
-                  @click="requestRemove(index)"
-                  class="text-gray-300 hover:text-red-500 transition-colors"
-                >
-                  <Trash2 :size="16" />
-                </button>
+                <div class="flex items-center gap-2">
+                   <button
+                    @click="openNoteModal(index)"
+                    class="text-gray-300 hover:text-orange-500 transition-colors"
+                    :class="{ 'text-orange-600': item.note }"
+                  >
+                    <Edit :size="16" />
+                  </button>
+                  <button
+                    @click="requestRemove(index)"
+                    class="text-gray-300 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 :size="16" />
+                  </button>
+                </div>
               </div>
+
+              <!-- Item Note Display -->
+              <div v-if="item.note" @click="openNoteModal(index)" class="mt-1 cursor-pointer bg-orange-50/50 p-2 rounded-xl border border-orange-100/50">
+                <p class="text-[8px] text-gray-500 font-bold flex items-center gap-1">
+                   <AlertCircle :size="8" /> GHI CHÚ:
+                </p>
+                <p class="text-[9px] text-orange-700 font-black italic line-clamp-1 leading-tight">"{{ item.note }}"</p>
+              </div>
+              <button v-else @click="openNoteModal(index)" class="mt-1 text-left text-[8px] font-black text-gray-300 uppercase tracking-widest hover:text-orange-600 transition-colors flex items-center gap-1">
+                <Plus :size="8" /> Thêm ghi chú
+              </button>
               <div class="flex justify-between items-center mt-2">
                 <div class="flex items-center gap-3 bg-gray-50 p-1 rounded-xl">
                   <button
@@ -289,6 +367,72 @@ const selectDeliveryMethod = async (method: 'delivery' | 'pickup' | 'dine-in') =
                   <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Thưởng thức tại chỗ</p>
                 </div>
                 <Check v-if="cartStore.deliveryMethod === 'dine-in'" class="ml-auto text-[#C04D1E]" :size="24" />
+              </button>
+            </div>
+            <div class="h-8"></div>
+          </div>
+        </transition>
+      </div>
+    </transition>
+
+    <!-- Item Note Modal -->
+    <transition
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition duration-200 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div v-if="isNoteModalOpen" class="fixed inset-0 z-[110] flex items-end justify-center">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="isNoteModalOpen = false"></div>
+        <transition
+          enter-active-class="transition duration-500 ease-out"
+          enter-from-class="translate-y-full"
+          enter-to-class="translate-y-0"
+          leave-active-class="transition duration-300 ease-in"
+          leave-from-class="translate-y-0"
+          leave-to-class="translate-y-full"
+        >
+          <div class="relative bg-white w-full max-w-md rounded-t-[48px] overflow-hidden shadow-2xl p-8 pt-4 flex flex-col max-h-[80vh]">
+            <div class="h-1.5 w-12 bg-gray-200 rounded-full mx-auto mt-4 mb-4"></div>
+            <h3 class="text-2xl font-black text-gray-900 uppercase tracking-tighter mb-8 text-center">Ghi chú cho món này</h3>
+            
+            <div class="overflow-y-auto no-scrollbar space-y-6">
+              <div class="flex flex-wrap gap-2">
+                <button
+                  v-for="note in quickNotes"
+                  :key="note.id"
+                  @click="toggleQuickNote(note.text)"
+                  class="px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 transition-all"
+                  :class="currentItemNote.split(',').map(n => n.trim()).includes(note.text)
+                    ? 'border-orange-600 bg-orange-50 text-orange-600'
+                    : 'border-gray-50 bg-gray-50 text-gray-400'"
+                >
+                  {{ note.text }}
+                </button>
+              </div>
+
+              <textarea 
+                v-model="currentItemNote"
+                rows="3"
+                placeholder="Nhập ghi chú thêm cho món ăn..."
+                class="w-full p-5 bg-gray-50 border-none rounded-3xl text-sm font-bold focus:ring-2 focus:ring-[#C04D1E] transition-all no-scrollbar"
+              ></textarea>
+            </div>
+
+            <div class="mt-8 flex gap-3">
+               <button
+                @click="isNoteModalOpen = false"
+                class="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                @click="saveItemNote"
+                class="flex-1 py-4 bg-[#C04D1E] text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-[#A03D18] transition-all shadow-lg shadow-[#C04D1E]/20"
+              >
+                Lưu ghi chú
               </button>
             </div>
             <div class="h-8"></div>
