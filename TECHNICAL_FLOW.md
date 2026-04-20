@@ -72,8 +72,9 @@ Hệ thống sử dụng cơ chế **Hybrid Data Fetching** (kết hợp lấy d
     *   Admin/Staff nhấn nút thao tác đổi trạng thái (ví dụ: từ `pending` -> `processing`).
     *   Hàm gửi lệnh `updateDoc` lên Firestore. Nút "Làm mới" ngay tại mỗi đơn hàng cho phép admin tự fetch cấu trúc dữ liệu đơn hàng cụ thể. Lịch sử đơn hàng phía Client thì cho cài đặt nút Refresh để theo dõi hành trình đơn hàng hiện tại.
     *   **Security Check**: Firebase Security Rules kiểm tra nghiêm ngặt người dùng có quyền `staff` hoặc `admin` thật sự không trước khi cho phép ghi/sửa.
-3.  **In hóa đơn**:
-    *   Hàm `printOrder()` lấy dữ liệu đơn hàng hiện tại, tạo một template HTML in ấn thu nhỏ phù hợp cho máy in nhiệt và gọi lệnh `window.print()` của trình duyệt.
+3.  **In hóa đơn và Tem nhãn**:
+    *   **In hóa đơn**: Hàm `printOrder()` lấy dữ liệu đơn hàng hiện tại, tạo một template HTML in ấn thu nhỏ (Receipt) phù hợp cho máy in nhiệt và gọi lệnh `window.print()`.
+    *   **In tem nhãn (Label Printing)**: Hàm `printOrderLabels()` tạo các trang in khổ 50x30mm cho từng sản phẩm trong đơn hàng. Mỗi tem chứa tên món, size, topping và ghi chú riêng biệt, giúp pha chế dán trực tiếp lên cốc/hộp. Sử dụng CSS `page-break-after: always` để tách riêng từng tem.
 
 ---
 

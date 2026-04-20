@@ -25,6 +25,7 @@ Hệ thống chia làm 4 vai trò chính:
   - Quản lý đơn hàng: Xử lý thao tác với tốc độ tức thời. Danh sách đơn lấy theo cơ chế Fetched Data chủ động qua các nút Làm mới (Refresh) nhằm tiết kiệm giới hạn đọc (Reads).
   - Thay đổi phương thức vận chuyển cho đơn hàng.
   - In hóa đơn (Receipt) cho khách hàng chuyên nghiệp.
+  - In tem nhãn (Labels): Hỗ trợ in tem dán cốc khổ 50x30mm cho từng món trong đơn, bao gồm đầy đủ thông tin món, size, topping và ghi chú riêng.
   - Nhận thông báo tức thời qua Telegram khi có đơn hàng mới.
   - Xem Dashboard tổng quan về đơn hàng.
 

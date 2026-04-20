@@ -29,7 +29,8 @@ import {
   HardDrive,
   CreditCard,
   Lock,
-  Unlock
+  Unlock,
+  Tag
 } from 'lucide-vue-next';
 import { 
   db, 
@@ -283,12 +284,21 @@ const storeInfo = ref({
 });
 const isSavingStoreInfo = ref(false);
 const orderToPrint = ref<Order | null>(null);
+const orderForLabels = ref<Order | null>(null);
 
 const printOrder = (order: Order) => {
   orderToPrint.value = order;
   setTimeout(() => {
     window.print();
     orderToPrint.value = null;
+  }, 300);
+};
+
+const printOrderLabels = (order: Order) => {
+  orderForLabels.value = order;
+  setTimeout(() => {
+    window.print();
+    orderForLabels.value = null;
   }, 300);
 };
 
@@ -1455,13 +1465,24 @@ const seedData = async () => {
                       <p class="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">Tổng thanh toán</p>
                       <p class="text-3xl font-black text-gray-900 tracking-tighter">{{ (order.totalAmount || 0).toLocaleString() }}đ</p>
                     </div>
-                    <button 
-                      v-if="order.status !== 'cancelled'"
-                      @click="printOrder(order)"
-                      class="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all"
-                    >
-                      <Printer :size="14" /> In đơn
-                    </button>
+                    <div class="flex gap-2">
+                      <button 
+                        v-if="order.status !== 'cancelled'"
+                        @click="printOrder(order)"
+                        class="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all"
+                        title="In hóa đơn thanh toán"
+                      >
+                        <Printer :size="14" /> In đơn
+                      </button>
+                      <button 
+                        v-if="order.status !== 'cancelled'"
+                        @click="printOrderLabels(order)"
+                        class="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-all border border-blue-100"
+                        title="In tem nhãn 50x30mm cho từng món"
+                      >
+                        <Tag :size="14" /> In tem
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -2588,6 +2609,36 @@ const seedData = async () => {
       </div>
     </transition>
 
+    <!-- Printable Label Container (50x30mm) -->
+    <div v-if="orderForLabels" class="hidden print:block">
+      <div v-for="(item, i) in orderForLabels.items" :key="i" class="print-label-page">
+        <div class="print-label-content">
+          <!-- Item Header -->
+          <div class="flex justify-between items-start border-b border-black pb-1 mb-1">
+            <span class="font-black text-[12px] leading-tight break-words flex-grow pr-1">
+              {{ item.quantity }}x {{ item.name }}
+            </span>
+            <span class="font-bold text-[10px] whitespace-nowrap">({{ item.size }})</span>
+          </div>
+          
+          <!-- Price Info -->
+          <div class="flex justify-end text-[9px] mb-1 font-bold italic opacity-80">
+            <span>{{ (item.price * item.quantity).toLocaleString() }}đ</span>
+          </div>
+
+          <!-- Toppings -->
+          <div v-if="item.toppings?.length" class="text-[9px] leading-none mb-1 font-bold">
+            <span class="uppercase text-[8px]">Topping:</span> {{ item.toppings.join(', ') }}
+          </div>
+
+          <!-- Note -->
+          <div v-if="item.note" class="text-[9px] leading-[1.1] border-t border-dotted border-gray-400 pt-1 mt-auto font-medium">
+            <span class="font-black uppercase text-[8px]">Ghi chú:</span> {{ item.note }}
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Printable Order Receipt -->
     <div id="print-area"
         v-if="orderToPrint"
@@ -2741,15 +2792,44 @@ const seedData = async () => {
 <style scoped>
 @media print {
   @page {
-    size: 74mm 105mm;
     margin: 0;
   }
+  
   html, body {
-    width: 74mm;
-    height: 105mm;
     margin: 0;
     padding: 0;
     background: white;
+  }
+
+  /* Specific styles for Receipt */
+  #print-area {
+    width: 74mm;
+    margin: 0 auto;
+  }
+
+  /* Specific styles for Labels */
+  .print-label-page {
+    width: 50mm;
+    height: 30mm;
+    padding: 2mm 3mm;
+    page-break-after: always;
+    position: relative;
+    overflow: hidden;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    color: black !important;
+  }
+
+  .print-label-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Hide scrollbars during print */
+  ::-webkit-scrollbar {
+    display: none;
   }
 }
 </style>

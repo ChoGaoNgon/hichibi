@@ -67,6 +67,9 @@ Hệ thống tích hợp một Dashboard báo cáo nâng cao (sử dụng 100% c
 - Tab "Đơn Hàng" chứa danh sách toàn bộ các hoạt động mua bán của chuỗi. Cung cấp bộ lọc thông minh (Lọc theo trạng thái, lọc theo PT Giao).
 - Các thanh tìm kiếm ngay trên tiêu đề hỗ trợ tìm tên khách, số điện thoại hoặc gõ thẳng 6 ký tự đuôi Mã Đơn để xử lý nhanh.
 - **Thay đổi trạng thái:** Quản lý thay đổi tính trạng xử lý từ Chờ Xử Lý -> Đang Pha chế -> Đang Giao -> Hoàn Tất. Tất cả được lưu lại và thông báo tới thiết bị cá nhân của khách. 
+- **In ấn chuyên nghiệp:**
+    - **Nút "In đơn":** In hóa đơn thanh toán tổng hợp cho khách.
+    - **Nút "In tem":** In tem dán cốc khổ 50x30mm. Mỗi món trong đơn sẽ được in ra một tem riêng biệt chứa tên món, size, topping và ghi chú yêu cầu của khách để dán trực tiếp lên sản phẩm.
 - Ghi đè phương thức: (Ví dụ từ Tại quán sang Ship tùy vào hiện trạng). 
 
 ### Quản lý Danh mục và Sản phẩm (Tích hợp Smart Search mới)
