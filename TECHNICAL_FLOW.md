@@ -103,7 +103,15 @@ Hệ thống sử dụng cơ chế đồng bộ dấu thời gian (Timestamp) gi
     *   **Không thay đổi:** Nếu bằng nhau, hệ thống lấy dữ liệu thẳng từ `localStorage` đưa ra hiển thị mà không cần tải lại toàn bộ thực đơn.
     *   **Có thay đổi mới:** Nếu Server `lastUpdated` lớn hơn bản ở Client, hệ thống gọi API Firebase để tải dữ liệu danh mục, đồ uống mới nhất. Sau đó hiển thị ngay lập tức và đồng thời ghi đè dữ liệu mới cùng `lastUpdated` mới vào `localStorage` của người dùng.
 
-## 5. Hệ thống Phân quyền (Security & Authorization)
+## 5. Luồng Ghi chú Sản phẩm (Item Note Flow)
+
+Hệ thống hỗ trợ khách hàng ghi chú riêng cho từng đơn vị sản phẩm trong giỏ hàng.
+1.  **Lấy Ghi chú nhanh**: Tương tự như luồng Menu, danh sách `quick_notes` được tải từ Firestore và cache vào `localStorage` để tối ưu chi phí Read.
+2.  **Thêm ghi chú khi chọn món**: Khi người dùng nhấn vào một sản phẩm trong `Menu.vue`, họ có thể chọn từ các ghi chú nhanh hoặc nhập ghi chú tùy chỉnh.
+3.  **Chỉnh sửa trong giỏ hàng**: Tại `Cart.vue`, người dùng có thể xem lại ghi chú của từng món và nhấn vào biểu tượng "Chỉnh sửa" để thay đổi nội dung.
+4.  **Lưu trữ đơn hàng**: Ghi chú này được lưu trực tiếp vào từng object trong mảng `items` của collection `orders`, giúp bộ phận pha chế có thể xem chi tiết từng yêu cầu nhỏ nhất.
+
+## 6. Hệ thống Phân quyền (Security & Authorization)
 
 Bảo mật được thực hiện ở 3 lớp:
 
@@ -154,7 +162,7 @@ Lưu trữ thông tin các món đồ uống và thức ăn.
 Lưu trữ thông tin và lịch sử vòng đời của từng đơn đặt hàng.
 - `userId` (string): Ref ID của người đặt hàng. (Với mPOS/tablet có thể rỗng).
 - `customerName`, `customerPhone` (string): Tên và SĐT liên hệ.
-- `items` (array): Mảng chứa các đối tượng sản phẩm (Gồm `productId`, `name`, `quantity`, `price`, `size`, `toppings`).
+- `items` (array): Mảng chứa các đối tượng sản phẩm (Gồm `productId`, `name`, `quantity`, `price`, `size`, `toppings`, và `note` ghi chú món).
 - `totalAmount`, `subtotal` (number): Thành tiền và Tổng cộng cuối cùng (Đã trừ chiết khấu).
 - `status` (string): Trạng thái đơn (Gồm: `pending` chờ xử lý, `processing` pha chế, `delivering` đang giao, `completed` hoàn tất, `cancelled` bị hủy).
 - `deliveryMethod` (string): Phương thức (`delivery` giao đi, `pickup` đến lấy, `dine-in` tại quán).
@@ -173,7 +181,12 @@ Kho lưu trữ khuyến mãi / mã giảm giá.
 - `startDate`, `endDate` (timestamp): Thời hạn hiệu lực áp dụng của mã.
 - `isActive` (boolean): Quản trị viên kích hoạt / vô hiệu hóa mã ngay lập tức.
 
-### 6. Collection `settings`
+### 6. Collection `quick_notes`
+Kho lưu trữ các ghi chú mẫu được thiết lập sẵn bởi Admin.
+- `text` (string): Nội dung ghi chú (vd: "Ít đường", "Không đá"...).
+- `createdAt`, `updatedAt` (timestamp): Thời gian tạo và cập nhật.
+
+### 7. Collection `settings`
 Nơi cấu hình Metadata của toàn bộ cửa hàng và tinh chỉnh Server.
 * **Document `store_info`**:
   - `name`, `address`, `phone`, `email`: Thiết lập thông tin liên hệ tĩnh.

@@ -41,9 +41,11 @@ Always adhere to this document structure when writing queries or types:
 2. **`categories`**: `{ name, slug, order, image }`
 3. **`products`**: `{ name, description, price, image, category, isAvailable, isTrending, options: { sizes, toppings } }`
 4. **`orders`**: `{ userId, customerName, customerPhone, items, totalAmount, subtotal, status, deliveryMethod, address, note, createdAt, updatedAt, paymentMethod }`
+    - *`items` array items include:* `{ productId, name, quantity, price, size, toppings, note }`
     - *Statuses:* `pending` -> `processing` -> `delivering` -> `completed` (or `cancelled`).
 5. **`vouchers`**: `{ code, discountType, discountValue, minOrderAmount, maxUsage, usedCount, startDate, endDate, isActive }`
-6. **`settings`**:
+6. **`quick_notes`**: `{ text, createdAt, updatedAt }` - For pre-defined item notes.
+7. **`settings`**:
     - `store_info`: Store metadata, social links, `telegramBotToken`, `googleSheetsUrl`.
     - `cache_info`: `{ lastUpdated, autoUpdate }`.
 

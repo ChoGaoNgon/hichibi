@@ -25,7 +25,7 @@ import {
   Download
 } from 'lucide-vue-next';
 import { db, collection, query, orderBy, getDocs, doc, getDoc } from '../firebase';
-import type { Product, Category, CartItem } from '../types';
+import type { Product, Category, CartItem, QuickNote } from '../types';
 import { useCartStore } from '../stores/cart';
 import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';
@@ -33,6 +33,7 @@ import { usePWA } from '../composables/usePWA';
 
 const products = ref<Product[]>([]);
 const categories = ref<Category[]>([]);
+const quickNotes = ref<QuickNote[]>([]);
 const searchQuery = ref('');
 const selectedProduct = ref<Product | null>(null);
 const loading = ref(true);
@@ -94,20 +95,32 @@ onMounted(async () => {
 
     // 3. Fetch from server if cache is invalid or missing
     if (!useCache) {
-      const [catSnapshot, prodSnapshot] = await Promise.all([
+      const [catSnapshot, prodSnapshot, quickNotesSnapshot] = await Promise.all([
         getDocs(query(collection(db, 'categories'), orderBy('order', 'asc'))),
-        getDocs(collection(db, 'products'))
+        getDocs(collection(db, 'products')),
+        getDocs(query(collection(db, 'quick_notes'), orderBy('createdAt', 'desc')))
       ]);
       
       categories.value = catSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
       products.value = prodSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+      quickNotes.value = quickNotesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as QuickNote));
 
       // Save to local storage
       localStorage.setItem('menu_cache', JSON.stringify({
         lastUpdated: serverCacheTime > 0 ? serverCacheTime : Date.now(),
         categories: categories.value,
-        products: products.value
+        products: products.value,
+        quickNotes: quickNotes.value
       }));
+    } else {
+       // Also try to load quickNotes from localCache if available
+       const localCache = JSON.parse(localCacheStr!);
+       quickNotes.value = localCache.quickNotes || [];
+
+       // Even if using cache for menu, refresh quickNotes in background to keep it updated
+       getDocs(query(collection(db, 'quick_notes'), orderBy('createdAt', 'desc'))).then(snapshot => {
+         quickNotes.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as QuickNote));
+       }).catch(err => console.error('Error refreshing quick notes:', err));
     }
 
     // Set initial active category
@@ -188,11 +201,23 @@ const closeProductModal = () => {
 const quantity = ref(1);
 const selectedSize = ref('');
 const selectedToppings = ref<string[]>([]);
+const itemNote = ref('');
 
 const resetModalState = () => {
   quantity.value = 1;
   selectedSize.value = selectedProduct.value?.options.sizes[0]?.name || '';
   selectedToppings.value = [];
+  itemNote.value = '';
+};
+
+const toggleQuickNote = (text: string) => {
+  const currentNotes = itemNote.value.split(',').map(n => n.trim()).filter(n => n !== '');
+  if (currentNotes.includes(text)) {
+    itemNote.value = currentNotes.filter(n => n !== text).join(', ');
+  } else {
+    currentNotes.push(text);
+    itemNote.value = currentNotes.join(', ');
+  }
 };
 
 const handleAdd = (item: CartItem) => {
@@ -572,6 +597,32 @@ const selectDeliveryMethod = async (method: 'delivery' | 'pickup' | 'dine-in') =
                     </button>
                   </div>
                 </div>
+
+                <!-- Item Note -->
+                <div class="space-y-4 pb-8">
+                  <h4 class="font-black text-gray-900 uppercase tracking-widest text-[10px]">GHI CHÚ MÓN NÀY</h4>
+                  
+                  <div class="flex flex-wrap gap-2 mb-4">
+                    <button
+                      v-for="note in quickNotes"
+                      :key="note.id"
+                      @click="toggleQuickNote(note.text)"
+                      class="px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 transition-all"
+                      :class="itemNote.split(',').map(n => n.trim()).includes(note.text)
+                        ? 'border-orange-600 bg-orange-50 text-orange-600'
+                        : 'border-gray-50 bg-gray-50 text-gray-400'"
+                    >
+                      {{ note.text }}
+                    </button>
+                  </div>
+
+                  <textarea
+                    v-model="itemNote"
+                    rows="2"
+                    placeholder="Ghi chú thêm cho món này (hoặc chọn ghi chú nhanh ở trên)..."
+                    class="w-full p-4 bg-gray-50 border-none rounded-2xl text-xs font-bold focus:ring-2 focus:ring-[#C04D1E] transition-all no-scrollbar"
+                  ></textarea>
+                </div>
               </div>
             </div>
 
@@ -608,7 +659,8 @@ const selectDeliveryMethod = async (method: 'delivery' | 'pickup' | 'dine-in') =
                   price: (selectedProduct.price + (selectedProduct.options.sizes.find(s => s.name === selectedSize)?.price || 0) + selectedToppings.reduce((acc, t) => acc + (selectedProduct?.options.toppings.find(top => top.name === t)?.price || 0), 0)),
                   size: selectedSize,
                   toppings: [...selectedToppings],
-                  image: selectedProduct.image
+                  image: selectedProduct.image,
+                  note: itemNote.trim()
                 })"
                 class="w-full py-5 bg-[#C04D1E] text-white rounded-3xl font-black text-sm uppercase tracking-widest hover:bg-[#A03D18] transition-all shadow-xl shadow-[#C04D1E]/30 flex items-center justify-center gap-3"
               >

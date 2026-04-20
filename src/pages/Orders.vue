@@ -469,7 +469,14 @@ const formatDate = (timestamp: Timestamp) => {
                     <span class="text-xs font-black text-[#C04D1E]">{{ (item.price * item.quantity).toLocaleString() }}đ</span>
                   </div>
                   <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">x{{ item.quantity }} • {{ item.size }}</p>
-                  <p v-if="item.options" class="text-[10px] text-gray-400 line-clamp-1">{{ item.options }}</p>
+                  <div v-if="item.toppings && item.toppings.length > 0" class="flex flex-wrap gap-1 mb-1">
+                    <span v-for="t in item.toppings" :key="t" class="text-[8px] bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest leading-none">
+                      + {{ t }}
+                    </span>
+                  </div>
+                  <p v-if="item.note" class="text-[9px] text-orange-700 font-bold italic border-l-2 border-orange-200 pl-2 py-1 bg-orange-50/30 rounded-r-md">
+                    Note: {{ item.note }}
+                  </p>
                 </div>
               </div>
             </div>

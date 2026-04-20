@@ -19,10 +19,12 @@ Màn hình khách hàng (`/`) là giao diện mặc định mà mọi người d
 ### B. Thêm vào Giỏ hàng
 - Click vào hình sản phẩm muốn uống. Một Modal (hộp thoại) sẽ hiện ra.
 - Trong hộp thoại này, hãy lựa chọn thêm **kích cỡ (Size)** và **topping**. Hệ thống tự động tính lại tổng tiền.
+- **Ghi chú riêng cho món:** Bạn có thể chọn các ghi chú nhanh (vd: Ít đường, Không đá) hoặc tự nhập yêu cầu riêng cho sản phẩm này ngay tại đây.
 - Bấm **Thêm vào giỏ**. Thao tác này có thể làm n lần cho các món khác nhau.
 
 ### C. Quản lý Giỏ hàng và Thanh toán (Checkout)
 - Nhấn vào biểu tượng túi xách trên đỉnh màn hình để duyệt tất cả các món đang có trong giỏ hàng.
+- **Chỉnh sửa ghi chú:** Mỗi món trong giỏ hàng đều hiển thị ghi chú đã nhập. Bạn có thể nhấn vào biểu tượng "Cây bút" để thay đổi hoặc bổ sung ghi chú bất cứ lúc nào trước khi thanh toán.
 - Nâng giảm số lượng, điều chỉnh tổng kết, hoặc nhập **Mã giảm giá (Voucher)** nếu cửa hàng bạn đang có.
 - Chạm vào nút **Tiến hành đặt hàng**. 
 - Tại màn hình thanh toán, chỉ định cách khách muốn lấy hàng: `Giao hàng tận nơi`, `Đến lấy` hay `Tại quán`. Hệ thống bắt buộc bạn điền địa chỉ hoặc liên hệ nếu đang ở xa, ngoại trừ trường hợp chọn "Tại quán".
@@ -77,6 +79,10 @@ Hệ thống tích hợp một Dashboard báo cáo nâng cao (sử dụng 100% c
 ### Quản lý Ưu đãi (Vouchers)
 - Quản trị viên tự thiết lập chiến lược Mã giảm giá (Giảm % hoặc Giảm thẳng tiền). 
 - Trạng thái Active/Deactive quản lý ngay tại bảng để quyết định mở hay đóng cổng. Tiến độ sử dụng `usedCount` dễ dàng phân tích độ hot của Voucher. 
+
+### Quản lý Ghi chú nhanh (Quick Notes)
+- Admin có thể thiết lập danh sách các ghi chú phổ biến (vd: "Ít đường", "Nhiều sữa", "Không đá"...) để giúp khách hàng đặt món nhanh hơn mà không cần gõ phím.
+- Các ghi chú này sẽ hiển thị dưới dạng nút bấm tiện lợi ở cả màn hình Chọn món và màn hình Giỏ hàng của khách.
 
 ### Quản lý Cache Hệ thống (Cache Management)
 Lần đầu tiên tính năng này xuất hiện trao quyền quyết định tốc độ cho Admin:

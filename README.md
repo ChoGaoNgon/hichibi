@@ -11,6 +11,7 @@ Hệ thống chia làm 4 vai trò chính:
   - Quản lý sản phẩm (thêm, sửa, xóa, ghi chú). Tích hợp tìm kiếm thông minh và lọc theo danh mục.
   - Quản lý danh mục sản phẩm (Hỗ trợ tìm kiếm nhanh).
   - Quản lý mã giảm giá (Vouchers) với các điều kiện áp dụng.
+  - Quản lý Ghi chú nhanh (Quick Notes): Thiết lập các ghi chú mẫu giúp khách hàng chọn nhanh khi đặt món.
   - Quản lý người dùng và phân quyền (Admin, Staff, Tablet, Customer).
   - Xem Báo cáo/Thống kê nâng cao (Zero-read Analytics) tích hợp Google Apps Script qua Iframe: Hiển thị bộ lọc ngày, KPI (Doanh thu, đơn hoàn thành, đơn chờ), biểu đồ tăng trưởng và bảng chi tiết doanh thu thẳng trên web mà không tốn chi phí Firestore Reads.
   - Cấu hình thông tin cửa hàng (Tên, địa chỉ, SĐT, mạng xã hội).
