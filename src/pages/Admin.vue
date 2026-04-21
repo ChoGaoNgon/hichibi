@@ -16,6 +16,7 @@ import {
   XCircle, 
   AlertCircle, 
   ChevronRight, 
+  ChevronDown,
   Database, 
   Trash2, 
   Edit,
@@ -232,10 +233,7 @@ const refreshData = async () => {
         await Promise.all([fetchOrders(true), fetchProducts(), fetchCategories()]);
         break;
       case 'orders':
-        orders.value = [];
-        lastOrderDoc.value = null;
-        hasMoreOrders.value = true;
-        await fetchOrders(true);
+        applyOrderSearch();
         break;
       case 'products':
         await fetchProducts();
@@ -355,9 +353,42 @@ const saveStoreInfo = async () => {
 };
 
 // Order Filtering & Search
-const orderFilter = ref<OrderStatus | 'all'>('all');
+const orderFilter = ref<OrderStatus[]>(['pending', 'processing', 'delivering']);
+const isOrderFilterOpen = ref(false);
+
+const availableOrderStatuses: { value: OrderStatus; label: string }[] = [
+  { value: 'pending', label: 'Chờ xử lý' },
+  { value: 'processing', label: 'Đang pha chế' },
+  { value: 'delivering', label: 'Đang giao' },
+  { value: 'completed', label: 'Hoàn tất' },
+  { value: 'cancelled', label: 'Đã hủy' }
+];
+
+const toggleOrderFilter = (status: OrderStatus) => {
+  const current = [...orderFilter.value];
+  const idx = current.indexOf(status);
+  
+  if (idx !== -1) {
+    if (current.length === 1) {
+      toast.error('Vui lòng chọn ít nhất 1 trạng thái để hiển thị');
+      return;
+    }
+    current.splice(idx, 1);
+  } else {
+    current.push(status);
+  }
+  
+  orderFilter.value = current;
+};
+
 const orderDeliveryFilter = ref<'all' | 'delivery' | 'pickup' | 'dine-in'>('all');
 const orderSearch = ref('');
+
+// Applied filters for search button
+const appliedOrderFilter = ref<OrderStatus[]>(['pending', 'processing', 'delivering']);
+const appliedOrderDeliveryFilter = ref<'all' | 'delivery' | 'pickup' | 'dine-in'>('all');
+const appliedOrderSearch = ref('');
+
 const orders = ref<Order[]>([]);
 const lastOrderDoc = ref<any>(null);
 const hasMoreOrders = ref(true);
@@ -375,10 +406,10 @@ const fetchOrders = async (isInitial = false) => {
       limit(PAGE_SIZE)
     );
 
-    if (orderFilter.value !== 'all') {
+    if (appliedOrderFilter.value.length < availableOrderStatuses.length && appliedOrderFilter.value.length > 0) {
       q = query(
         collection(db, 'orders'),
-        where('status', '==', orderFilter.value),
+        where('status', 'in', appliedOrderFilter.value),
         orderBy('createdAt', 'desc'),
         limit(PAGE_SIZE)
       );
@@ -411,13 +442,13 @@ const fetchOrders = async (isInitial = false) => {
 const filteredOrders = computed(() => {
   let result = orders.value;
 
-  if (orderDeliveryFilter.value !== 'all') {
-    result = result.filter(o => o.deliveryMethod === orderDeliveryFilter.value);
+  if (appliedOrderDeliveryFilter.value !== 'all') {
+    result = result.filter(o => o.deliveryMethod === appliedOrderDeliveryFilter.value);
   }
 
-  if (!orderSearch.value) return result;
+  if (!appliedOrderSearch.value) return result;
   
-  const search = orderSearch.value.toLowerCase().trim();
+  const search = appliedOrderSearch.value.toLowerCase().trim();
   return result.filter(o => {
     const idMatch = o.id.toLowerCase().includes(search);
     const nameMatch = search.length >= 3 && o.customerName.toLowerCase().includes(search);
@@ -426,13 +457,15 @@ const filteredOrders = computed(() => {
   });
 });
 
-// Reset and refetch when status filter changes
-watch(orderFilter, () => {
+const applyOrderSearch = () => {
+  appliedOrderFilter.value = [...orderFilter.value];
+  appliedOrderDeliveryFilter.value = orderDeliveryFilter.value;
+  appliedOrderSearch.value = orderSearch.value;
   orders.value = [];
   lastOrderDoc.value = null;
   hasMoreOrders.value = true;
   fetchOrders(true);
-});
+};
 
 const observerTarget = ref<HTMLElement | null>(null);
 let observer: IntersectionObserver | null = null;
@@ -1302,7 +1335,7 @@ const executeStatusUpdate = async () => {
       orders.value[orderIndex].status = status;
       
       // If filtering by status and status changed, remove from list
-      if (orderFilter.value !== 'all' && status !== orderFilter.value) {
+      if (orderFilter.value.length < availableOrderStatuses.length && !orderFilter.value.includes(status)) {
         orders.value = orders.value.filter(o => o.id !== orderId);
       }
     }
@@ -1572,49 +1605,80 @@ const seedData = async () => {
         <!-- Orders Tab -->
         <div v-if="activeTab === 'orders'" class="space-y-10">
           <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-            <div class="flex items-center gap-4">
-              <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">QUẢN LÝ ĐƠN HÀNG</h2>
+            <div class="flex flex-wrap flex-1 justify-between items-center w-full gap-4">
               <button 
-                @click="refreshData" 
-                :disabled="isRefreshing"
-                class="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 hover:text-orange-600 hover:bg-orange-50 hover:border-orange-100 transition-all disabled:opacity-50"
+                @click="applyOrderSearch" 
+                :disabled="isLoadingOrders"
+                class="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gray-50 border border-gray-200 text-gray-700 hover:text-orange-600 hover:bg-orange-50 hover:border-orange-100 transition-all disabled:opacity-50"
                 title="Làm mới dữ liệu"
               >
-                <RefreshCw :size="16" :class="{ 'animate-spin': isRefreshing }" />
+                <RefreshCw :size="16" :class="{ 'animate-spin': isLoadingOrders }" />
+                <span class="text-xs font-black uppercase tracking-widest">Refresh</span>
               </button>
-            </div>
-            
-            <div class="flex flex-wrap items-center gap-4">
-              <div class="flex items-center gap-3 bg-gray-50 px-6 py-3 rounded-2xl flex-grow md:flex-grow-0">
-                <Search :size="16" class="text-gray-400" />
-                <input 
-                  v-model="orderSearch" 
-                  type="text" 
-                  placeholder="Tìm mã đơn, tên, SĐT..." 
-                  class="text-xs font-bold bg-transparent border-none focus:ring-0 w-full md:w-48"
-                />
-              </div>
 
-              <div class="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-2xl">
-                <Filter :size="14" class="text-gray-400" />
-                <select v-model="orderFilter" class="text-[10px] font-black uppercase tracking-widest bg-transparent border-none focus:ring-0 cursor-pointer">
-                  <option value="all">Tất cả trạng thái</option>
-                  <option value="pending">Chờ xử lý</option>
-                  <option value="processing">Đang pha chế</option>
-                  <option value="delivering">Đang giao</option>
-                  <option value="completed">Hoàn tất</option>
-                  <option value="cancelled">Đã hủy</option>
-                </select>
-              </div>
+              <div class="flex flex-wrap items-center gap-4 ml-auto">
+                <div class="flex items-center gap-3 bg-gray-50 px-6 py-3 rounded-2xl flex-grow md:flex-grow-0">
+                  <Search :size="16" class="text-gray-400" />
+                  <input 
+                    v-model="orderSearch" 
+                    @keyup.enter="applyOrderSearch"
+                    type="text" 
+                    placeholder="Tìm mã đơn, tên, SĐT..." 
+                    class="text-xs font-bold bg-transparent border-none focus:ring-0 w-full md:w-48"
+                  />
+                </div>
 
-              <div class="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-2xl">
-                <Truck :size="14" class="text-gray-400" />
-                <select v-model="orderDeliveryFilter" class="text-[10px] font-black uppercase tracking-widest bg-transparent border-none focus:ring-0 cursor-pointer">
-                  <option value="all">Tất cả PT giao</option>
-                  <option value="delivery">Giao hàng</option>
-                  <option value="pickup">Đến lấy</option>
-                  <option value="dine-in">Tại quán</option>
-                </select>
+                <!-- Multi-select Dropdown -->
+                <div class="relative">
+                  <div @click="isOrderFilterOpen = !isOrderFilterOpen" class="flex items-center gap-2 bg-gray-50 px-4 py-3 rounded-2xl cursor-pointer hover:bg-gray-100 transition-colors">
+                    <Filter :size="14" class="text-gray-400" />
+                    <span class="text-[10px] font-black uppercase tracking-widest text-gray-700 min-w-[110px] text-center">
+                      {{ orderFilter.length === availableOrderStatuses.length ? 'Tất cả trạng thái' : orderFilter.length + ' trạng thái' }}
+                    </span>
+                    <ChevronDown :size="14" class="text-gray-400" />
+                  </div>
+                  
+                  <div v-if="isOrderFilterOpen" class="absolute top-full right-0 md:left-0 mt-2 w-56 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden">
+                    <div class="p-3 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
+                      <span class="text-[10px] font-black uppercase tracking-widest text-gray-500">Trạng thái hiển thị</span>
+                      <button @click="isOrderFilterOpen = false" class="text-gray-400 hover:text-gray-700 p-1 bg-white rounded-full shadow-sm hover:shadow">
+                        <XCircle :size="14" />
+                      </button>
+                    </div>
+                    <div class="p-2 flex flex-col gap-1 max-h-60 overflow-y-auto">
+                      <label v-for="status in availableOrderStatuses" :key="status.value" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors" :class="{'bg-orange-50': orderFilter.includes(status.value)}">
+                        <input 
+                          type="checkbox" 
+                          :value="status.value" 
+                          :checked="orderFilter.includes(status.value)"
+                          @change="toggleOrderFilter(status.value)"
+                          class="w-4 h-4 text-orange-600 rounded focus:ring-orange-500 border-gray-300"
+                        />
+                        <span class="text-xs font-semibold text-gray-700">{{ status.label }}</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-2xl">
+                  <Truck :size="14" class="text-gray-400" />
+                  <select v-model="orderDeliveryFilter" class="text-[10px] font-black uppercase tracking-widest bg-transparent border-none focus:ring-0 cursor-pointer">
+                    <option value="all">Tất cả PT giao</option>
+                    <option value="delivery">Giao hàng</option>
+                    <option value="pickup">Đến lấy</option>
+                    <option value="dine-in">Tại quán</option>
+                  </select>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <button 
+                    @click="applyOrderSearch"
+                    :disabled="isLoadingOrders"
+                    class="px-6 py-3 bg-[#111111] text-white text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-black transition-colors disabled:opacity-50"
+                  >
+                    Tìm kiếm
+                  </button>
+                </div>
               </div>
             </div>
           </div>
