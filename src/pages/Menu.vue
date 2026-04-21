@@ -113,14 +113,9 @@ onMounted(async () => {
         quickNotes: quickNotes.value
       }));
     } else {
-       // Also try to load quickNotes from localCache if available
+       // Load quickNotes from localCache if available
        const localCache = JSON.parse(localCacheStr!);
        quickNotes.value = localCache.quickNotes || [];
-
-       // Even if using cache for menu, refresh quickNotes in background to keep it updated
-       getDocs(query(collection(db, 'quick_notes'), orderBy('createdAt', 'desc'))).then(snapshot => {
-         quickNotes.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as QuickNote));
-       }).catch(err => console.error('Error refreshing quick notes:', err));
     }
 
     // Set initial active category

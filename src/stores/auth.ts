@@ -6,6 +6,7 @@ import type { User as FirebaseUser } from 'firebase/auth';
 import router from '../router';
 import { useWebView } from '../composables/useWebView';
 
+import { useCustomerOrderStore } from './customerOrders';
 import { toast } from 'vue-sonner';
 
 export const useAuthStore = defineStore('auth', () => {
@@ -61,6 +62,7 @@ export const useAuthStore = defineStore('auth', () => {
         }
       } else {
         profile.value = null;
+        useCustomerOrderStore().clearCache();
         // Redirect if on admin page
         if (router.currentRoute.value.meta.requiresAdmin) {
           router.push('/');

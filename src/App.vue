@@ -40,6 +40,11 @@ watch(() => authStore.user, (user) => {
           detail: { id: oId, status: order.status }
         }));
         
+        // Also update cache store directly so it's fresh if user goes back to /orders within TTL
+        import('./stores/customerOrders').then(({ useCustomerOrderStore }) => {
+          useCustomerOrderStore().updateOrderStatus(oId, order.status, order.location);
+        });
+        
         const oldStatus = knownOrderStatuses.value[oId];
 
         if (change.type === 'added') {

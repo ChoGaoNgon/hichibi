@@ -203,6 +203,10 @@ const handleSubmit = async () => {
     currentOperation = { type: OperationType.CREATE, path: 'orders' };
     const docRef = await addDoc(collection(db, 'orders'), orderData);
     
+    // Clear cache to ensure new order appears in order history immediately
+    const { useCustomerOrderStore } = await import('../stores/customerOrders');
+    useCustomerOrderStore().clearCache();
+    
     // Update voucher usage
     if (appliedVoucher.value) {
       currentOperation = { type: OperationType.UPDATE, path: `vouchers/${appliedVoucher.value.id}` };
