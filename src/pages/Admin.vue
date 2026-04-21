@@ -31,7 +31,8 @@ import {
   Lock,
   Unlock,
   Tag,
-  Copy
+  Copy,
+  CopyPlus
 } from 'lucide-vue-next';
 import { 
   db, 
@@ -557,6 +558,108 @@ const applyCopiedToppings = () => {
     }
   });
   isCopyToppingModalOpen.value = false;
+};
+
+// Spread Topping Logic
+const isSpreadToppingModalOpen = ref(false);
+const sourceProductForSpread = ref<Product | null>(null);
+const allProductsForSpread = ref<Product[]>([]);
+const targetProductIdsForSpread = ref<string[]>([]);
+const isSpreadingToppings = ref(false);
+const spreadToppingMode = ref<'overwrite' | 'append'>('append');
+
+const openSpreadToppingModal = async (product: Product) => {
+  if (!product.options.toppings || product.options.toppings.length === 0) {
+    toast.error('Sản phẩm này không có topping nào để copy.');
+    return;
+  }
+  sourceProductForSpread.value = product;
+  targetProductIdsForSpread.value = [];
+  
+  try {
+    const q = query(collection(db, 'products'));
+    const snapshot = await getDocs(q);
+    allProductsForSpread.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)).filter(p => p.id !== product.id);
+    isSpreadToppingModalOpen.value = true;
+  } catch (err) {
+    console.error('Error fetching all products for spread', err);
+    toast.error('Không thể tải danh sách sản phẩm');
+  }
+};
+
+const toggleSelectAllSpreadTargets = () => {
+  if (targetProductIdsForSpread.value.length === allProductsForSpread.value.length) {
+    targetProductIdsForSpread.value = [];
+  } else {
+    targetProductIdsForSpread.value = allProductsForSpread.value.map(p => p.id);
+  }
+};
+
+const confirmSpreadToppings = async () => {
+  if (targetProductIdsForSpread.value.length === 0) {
+    toast.error('Vui lòng chọn ít nhất 1 sản phẩm đích.');
+    return;
+  }
+  
+  isSpreadingToppings.value = true;
+  const batch = writeBatch(db);
+  const toppingsToCopy = sourceProductForSpread.value?.options.toppings || [];
+  
+  targetProductIdsForSpread.value.forEach(pid => {
+    const pRef = doc(db, 'products', pid);
+    const targetProduct = allProductsForSpread.value.find(p => p.id === pid);
+    
+    let updatedToppings: any[] = [];
+    if (spreadToppingMode.value === 'overwrite') {
+      updatedToppings = [...toppingsToCopy];
+    } else {
+      const existingToppings = targetProduct?.options.toppings || [];
+      updatedToppings = [...existingToppings];
+      
+      toppingsToCopy.forEach(t => {
+        if (!updatedToppings.some(et => et.name === t.name)) {
+          updatedToppings.push(t);
+        }
+      });
+    }
+    batch.update(pRef, { 'options.toppings': updatedToppings });
+  });
+  
+  try {
+    await batch.commit();
+    toast.success(`Đã copy topping sang ${targetProductIdsForSpread.value.length} sản phẩm thành công.`);
+    isSpreadToppingModalOpen.value = false;
+    
+    triggerAutoCacheUpdate(); // trigger cache update
+    
+    // Update local state if affected products are loaded
+    products.value = products.value.map(p => {
+      if (targetProductIdsForSpread.value.includes(p.id)) {
+        let updatedToppings: any[] = [];
+        if (spreadToppingMode.value === 'overwrite') {
+          updatedToppings = [...toppingsToCopy];
+        } else {
+          const existingToppings = p.options.toppings || [];
+          updatedToppings = [...existingToppings];
+          toppingsToCopy.forEach(t => {
+            if (!updatedToppings.some(et => et.name === t.name)) {
+              updatedToppings.push(t);
+            }
+          });
+        }
+        return { ...p, options: { ...p.options, toppings: updatedToppings } };
+      }
+      return p;
+    });
+    
+  } catch(err) {
+    console.error('Lỗi khi copy topping:', err);
+    toast.error('Có lỗi xảy ra, vui lòng thử lại.');
+  } finally {
+    isSpreadingToppings.value = false;
+    sourceProductForSpread.value = null;
+    targetProductIdsForSpread.value = [];
+  }
 };
 
 const searchProducts = async () => {
@@ -1790,10 +1893,13 @@ const seedData = async () => {
                   </span>
                 </div>
                 <div class="absolute top-6 right-6 flex gap-2">
-                  <button @click="openProductModal(product)" class="w-10 h-10 bg-white/90 backdrop-blur rounded-xl flex items-center justify-center text-gray-600 hover:text-orange-600 shadow-xl">
+                  <button @click="openSpreadToppingModal(product)" class="w-10 h-10 bg-white/90 backdrop-blur rounded-xl flex items-center justify-center text-gray-600 hover:text-orange-600 shadow-xl" title="Phân bổ Topping cho sản phẩm khác" v-if="product.options.toppings && product.options.toppings.length > 0">
+                    <CopyPlus :size="18" />
+                  </button>
+                  <button @click="openProductModal(product)" class="w-10 h-10 bg-white/90 backdrop-blur rounded-xl flex items-center justify-center text-gray-600 hover:text-orange-600 shadow-xl" title="Sửa sản phẩm">
                     <Edit :size="18" />
                   </button>
-                  <button @click="confirmDelete(product.id, 'product')" class="w-10 h-10 bg-white/90 backdrop-blur rounded-xl flex items-center justify-center text-gray-600 hover:text-red-600 shadow-xl">
+                  <button @click="confirmDelete(product.id, 'product')" class="w-10 h-10 bg-white/90 backdrop-blur rounded-xl flex items-center justify-center text-gray-600 hover:text-red-600 shadow-xl" title="Xóa sản phẩm">
                     <Trash2 :size="18" />
                   </button>
                 </div>
@@ -2984,6 +3090,93 @@ const seedData = async () => {
               class="flex-grow py-4 bg-orange-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-orange-700 transition-all shadow-xl shadow-orange-600/30 disabled:opacity-50"
             >
               Chọn {{ selectedToppingsToCopy.length }} Topping
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+    <!-- Spread Topping Modal -->
+    <transition
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition duration-200 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div v-if="isSpreadToppingModalOpen" class="fixed inset-0 z-[120] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="isSpreadToppingModalOpen = false"></div>
+        <div class="relative bg-white w-full max-w-lg rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+          <div class="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <div>
+              <h3 class="text-xl font-black text-gray-900 uppercase tracking-tighter">Phân bổ Topping</h3>
+              <p class="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1">Copy {{ sourceProductForSpread?.options.toppings.length }} topping đến các sản phẩm khác</p>
+            </div>
+            <button @click="isSpreadToppingModalOpen = false" :disabled="isSpreadingToppings" class="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+              <XCircle :size="24" class="text-gray-400" />
+            </button>
+          </div>
+
+          <div class="flex flex-col gap-4 px-6 py-4 border-b border-gray-100">
+             <div class="flex items-center gap-4 text-sm font-bold text-gray-700">
+                <label class="flex items-center gap-2 cursor-pointer hover:text-orange-600">
+                  <input type="radio" v-model="spreadToppingMode" value="append" class="text-orange-600 focus:ring-orange-600"> 
+                  Ghi thêm <span class="text-[10px] text-gray-400 font-normal">(Giữ cũ, nối mới khác tên)</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer hover:text-orange-600">
+                  <input type="radio" v-model="spreadToppingMode" value="overwrite" class="text-orange-600 focus:ring-orange-600"> 
+                  Ghi đè <span class="text-[10px] text-gray-400 font-normal">(Xóa sạch cũ)</span>
+                </label>
+             </div>
+             <button @click="toggleSelectAllSpreadTargets" class="font-black text-xs text-orange-600 uppercase hover:text-orange-700 transition-colors self-start">
+               {{ targetProductIdsForSpread.length === allProductsForSpread.length && allProductsForSpread.length > 0 ? 'Bỏ chọn tất cả' : 'Chọn tất cả' }}
+             </button>
+          </div>
+
+          <div class="flex-grow overflow-y-auto p-6 space-y-2 no-scrollbar">
+            <div v-if="allProductsForSpread.length === 0" class="text-center py-10">
+              <Database :size="40" class="mx-auto text-gray-200 mb-4" />
+              <p class="text-gray-400 font-bold text-sm">Không có sản phẩm nào khác</p>
+            </div>
+            <button 
+              v-for="target in allProductsForSpread" 
+              :key="target.id"
+              @click="targetProductIdsForSpread.includes(target.id) ? targetProductIdsForSpread.splice(targetProductIdsForSpread.indexOf(target.id), 1) : targetProductIdsForSpread.push(target.id)"
+              class="w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all group"
+              :class="targetProductIdsForSpread.includes(target.id) 
+                ? 'border-orange-600 bg-orange-50' 
+                : 'border-gray-50 hover:border-gray-200 bg-white'"
+            >
+              <div class="flex flex-col items-start text-left">
+                <span class="font-black text-sm uppercase tracking-tight" :class="targetProductIdsForSpread.includes(target.id) ? 'text-orange-600' : 'text-gray-900'">
+                  {{ target.name }}
+                </span>
+                <span class="text-[10px] text-gray-400 font-bold italic">{{ target.category }}</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <div 
+                  class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all"
+                  :class="targetProductIdsForSpread.includes(target.id) 
+                    ? 'bg-orange-600 border-orange-600 text-white' 
+                    : 'border-gray-200 group-hover:border-gray-300'"
+                >
+                  <CheckCircle v-if="targetProductIdsForSpread.includes(target.id)" :size="14" />
+                </div>
+              </div>
+            </button>
+          </div>
+
+          <div class="p-6 bg-gray-50 border-t border-gray-100 flex gap-4">
+            <button @click="isSpreadToppingModalOpen = false" :disabled="isSpreadingToppings" class="flex-grow py-4 bg-white border border-gray-200 text-gray-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-100 transition-all">
+              Hủy
+            </button>
+            <button 
+              @click="confirmSpreadToppings" 
+              :disabled="targetProductIdsForSpread.length === 0 || isSpreadingToppings"
+              class="flex-grow py-4 bg-orange-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-orange-700 transition-all shadow-xl shadow-orange-600/30 disabled:opacity-50 flex items-center justify-center"
+            >
+              <RefreshCw v-if="isSpreadingToppings" :size="16" class="animate-spin mr-2" />
+              Lưu vào {{ targetProductIdsForSpread.length }} SP
             </button>
           </div>
         </div>

@@ -23,7 +23,7 @@ A multi-platform (Mobile, Tablet, Desktop) web application for ordering and mana
 - **Offline Cache System:** The Customer Menu heavily relies on `localStorage`. The system fetches a `lastUpdated` timestamp from the `settings/cache_info` document. The client compares this timestamp with its local version and only re-fetches the entire products/categories collections if the server timestamp is newer.
 
 ### B. UI/UX Conventions
-- **Space Optimization:** For Admin and Staff dashboards, use icons (from `lucide-vue-next`) instead of text for repetitive actions (e.g., Refresh, Add Product/Category). Include tooltips (`title="..."`) for clarity.
+- **Space Optimization:** For Admin and Staff dashboards, use icons (from `lucide-vue-next`) instead of text for repetitive actions (e.g., Refresh, Add Product/Category). Include tooltips (`title="..."`) for clarity. In Menu/Tablet views, use **Flex Wrap Pills** for topping selection instead of large vertical blocks to minimize scroll fatigue and maximize touch areas on mobile devices.
 - **Mobile-First:** Ensure all tables, grids, and dialogs are responsive. Use horizontal scrolling for data-heavy tables on mobile screens. 
 - **Feedback:** Use `vue-sonner` (toast notifications) for success/error states instead of native `alert()`.
 
@@ -33,7 +33,9 @@ A multi-platform (Mobile, Tablet, Desktop) web application for ordering and mana
 - **Enforcement:** Role checks must be done at the UI level (`v-if="authStore.isAdmin"`), Router level (`beforeEach` guards), and Firestore Security Rules.
 - **Tablet Mode:** The `/tablet` route is a fast-POS mode. It skips customer info requirements and goes straight to check out and print bills.
 - **Printing:** Supports thermal/receipt printing (74mm) and individual item labels (50x30mm) with item-specific notes and toppings. Labels are optimized to show preparation details only (no Store/Order/Time info). Receipts include dynamic Bank QR generation based on a configurable template (`bankQRType`: 'dynamic'), replacing placeholders (`SO_TIEN`, `NOI_DUNG`, etc.) with real order details to generate ready-to-pay QR codes (e.g., via Sepay).
-- **Product Management:** Includes a **Topping Copy** feature that performs client-side unique scanning of existing products to suggest toppings for new ones, minimizing database dependency.
+- **Product Management:** Includes two advanced Topping Management features:
+  1. **Topping Copy (Pull):** Performs client-side unique scanning of existing products to suggest toppings for a new product, minimizing database fetch overhead.
+  2. **Batch Topping Spread (Push):** Rapidly distributes toppings from a source product to multiple target products via `writeBatch`, supporting both 'Overwrite' and 'Append' modes for massive menu updates.
 - **Quick Notes:** Fully manageable (CRUD) via Admin with instantaneous local UI updates following Firestore operations.
 
 ## 4. Firestore Database Structure

@@ -77,10 +77,10 @@ Hệ thống sử dụng cơ chế **Hybrid Data Fetching** (kết hợp lấy d
     *   **Mã QR Thanh toán Động (Dynamic QR)**: Hỗ trợ sinh mã QR linh hoạt khi in hóa đơn. Nếu Admin chọn chế độ "QR sinh số tiền (Động)", hàm `getBankQRUrl()` sẽ sử dụng chuỗi URL mẫu (Base URL) do người dùng nhập, tự động tìm và thay thế (String Replacement) các từ khóa (`NGAN_HANG`, `SO_TAI_KHOAN`, `SO_TIEN`, `NOI_DUNG`) thành thông tin thực tế của đơn hàng (Tổng tiền thanh toán, ID đơn hàng). Giúp thu ngân nhận tiền chính xác qua các dịch vụ sinh ảnh QR nhanh như VietQR, Sepay.
     *   **In tem nhãn (Label Printing)**: Hàm `printOrderLabels()` tạo các trang in khổ 50x30mm cho từng sản phẩm trong đơn hàng. Mỗi tem chứa tên món, size, topping và ghi chú riêng biệt, giúp pha chế dán trực tiếp lên cốc/hộp. Sử dụng CSS `page-break-after: always` để tách riêng từng tem. Thông tin dư thừa (Store Name, Time, Order ID) được loại bỏ để tối đa hóa diện tích hiển thị thông tin món.
 
-4.  **Sao chép Topping (Client-Side Scanning)**:
-    *   Hệ thống không lưu trữ bảng "Topping mẫu" riêng biệt để tiết kiệm Reads/Writes.
-    *   Thay vào đó, khi Admin nhấn "Sao chép Topping", hệ thống thực hiện quét (scanning) toàn bộ danh sách sản phẩm hiện có trong bộ nhớ (Computed Property `availableUniqueToppings`), trích xuất các object topping độc nhất dựa trên bộ đôi `{name, price}`.
-    *   Cơ chế này cho phép tái sử dụng dữ liệu Topping đã định nghĩa ở bất kỳ sản phẩm nào mà không tốn chi phí truy vấn Database bổ sung.
+4.  **Tối ưu hóa UI/UX & Quản lý Topping Năng động**:
+    *   **Giao diện Chọn Topping (Flex Wrap Pills)**: Thay vi dùng kiểu thiết kế `Grid` tạo cảm giác cồng kềnh, phân trang Đặt đồ (Customer/Tablet) áp dụng cấu trúc giao diện "Pill" siêu nhỏ gọn. Các dòng topping được gói lại, tự động đổ dòng kế tiếp và tự Highlight cam nền báo hiệu nếu được chọn ngón tay, giúp tinh giản diện tích màn hình UX Mobile cực độ.
+    *   **Sao chép Topping (Client-Side Scanning)**: Hệ thống không lưu trữ bảng "Topping mẫu" riêng biệt để tiết kiệm Reads/Writes. Khi Admin chọn "Sao chép Topping", hệ thống quét danh sách sản phẩm hiện có trong bộ nhớ, trích xuất topping độc nhất dựa trên `{name, price}` giúp tái sử dụng cấu trúc nhàn hạ.
+    *   **Phân bổ Topping Hàng loạt (Batch Spread)**: Hàm `openSpreadToppingModal()` cung cấp nghiệp vụ Rải rắc topping từ 1 sản phẩm lên N sản phẩm khác. Ứng dụng Firestore WriteBatch để ghi đè hoặc ghi thêm (nhờ thuật toán dò tên loại trừ) giúp Admin cập nhật Menu thần tốc.
 
 ---
 
