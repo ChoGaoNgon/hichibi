@@ -14,7 +14,7 @@ Hệ thống chia làm 4 vai trò chính:
   - Quản lý Ghi chú nhanh (Quick Notes): Thiết lập các ghi chú mẫu giúp khách hàng chọn nhanh khi đặt món. Hỗ trợ thêm/sửa/xóa linh hoạt.
   - Quản lý người dùng và phân quyền (Admin, Staff, Tablet, Customer).
   - Xem Báo cáo/Thống kê nâng cao (Zero-read Analytics) tích hợp Google Apps Script qua Iframe: Hiển thị bộ lọc ngày, KPI (Doanh thu, đơn hoàn thành, đơn chờ), biểu đồ tăng trưởng và bảng chi tiết doanh thu thẳng trên web mà không tốn chi phí Firestore Reads.
-  - Cấu hình thông tin cửa hàng (Tên, địa chỉ, SĐT, mạng xã hội).
+  - Cấu hình thông tin cửa hàng (Tên, địa chỉ, SĐT, mạng xã hội) và **Mã QR Thanh toán** (Hỗ trợ QR tĩnh hoặc QR động sinh tự động theo số tiền & mã đơn dựa trên template URL).
   - Cấu hình **Telegram Bot** để nhận thông báo đơn hàng mới.
   - Cấu hình **Google Sheets Sync** để tự động đồng bộ đơn hàng sang bảng tính.
   - Quản lý **Google Calendar** để tạo, xóa và theo dõi lịch làm việc, sự kiện lặp lại, mời khách tham dự.

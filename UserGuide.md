@@ -95,6 +95,13 @@ Lần đầu tiên tính năng này xuất hiện trao quyền quyết định t
 - **Chế độ Tự động:** Mọi thao tác thêm sửa sản phẩm lập tức cập nhật lại Database và bắn tín hiệu sang thiết bị của Khách hàng, yêu cầu Client ngầm tải lại đồ mới nhất theo thời gian thực (Giảm độ trễ gần như = 0).
 - **Chế độ Thủ công:** Admin hoàn thành hết combo 15 thức uống mới bắt đầu bấm nút "Cập nhật Cache khách" 1 lần duy nhất để giải tỏa sức nặng gọi Firebase. Hoàn toàn chủ động.
 
+### Cấu hình Thanh toán & Sinh mã QR Động
+- Tại màn hình **Cấu hình cửa hàng > Thông tin chuyển khoản**, Admin có thể linh hoạt chọn loại hiển thị mã QR khi xuất/in hóa đơn:
+    - **QR chính chủ (Tĩnh):** Điền trực tiếp một link ảnh tĩnh của QR code cá nhân. Khách hàng/nhân viên sẽ quét và tự tay nhập số điểm bưu điện đơn hàng.
+    - **QR sinh số tiền (Động):** Cho phép hóa đơn tự động in ra mã QR *đã bao gồm sẵn số tiền cần thanh toán* và *Mã đơn hàng*.  
+      **Cách thiết lập:** Tích chọn chế độ này và dán một link (URL) tham chiếu tạo ảnh QR có tính năng tự động (như của VietQR, Sepay). Đảm bảo giữ nguyên các biến viết hoa làm placeholder: `NGAN_HANG`, `SO_TAI_KHOAN`, `SO_TIEN`, `NOI_DUNG`.
+      *(Ví dụ `https://qr.sepay.vn/img?bank=NGAN_HANG&acc=SO_TAI_KHOAN&amount=SO_TIEN&des=NOI_DUNG&template=qronly`)*
+
 ### Thông báo Mạng Xã Hội (Telegram Notify)
 - Tại màn hình Cấu hình Cửa hàng, bạn có thể thiết lập Telegram Bot do chính bạn tạo để đẩy bắn tin nhắn thẳng vào Group Telegram chung của quán sau mỗi 1 giây kể từ khi có khách Vãng lai đặt hàng hoặc khách dùng Tablet lên đơn mới. Tránh miss đơn hoàn toàn.
 

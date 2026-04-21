@@ -32,7 +32,7 @@ A multi-platform (Mobile, Tablet, Desktop) web application for ordering and mana
 - **Roles:** `admin`, `staff`, `tablet`, `customer`.
 - **Enforcement:** Role checks must be done at the UI level (`v-if="authStore.isAdmin"`), Router level (`beforeEach` guards), and Firestore Security Rules.
 - **Tablet Mode:** The `/tablet` route is a fast-POS mode. It skips customer info requirements and goes straight to check out and print bills.
-- **Printing:** Supports thermal/receipt printing (74mm) and individual item labels (50x30mm) with item-specific notes and toppings. Labels are optimized to show preparation details only (no Store/Order/Time info).
+- **Printing:** Supports thermal/receipt printing (74mm) and individual item labels (50x30mm) with item-specific notes and toppings. Labels are optimized to show preparation details only (no Store/Order/Time info). Receipts include dynamic Bank QR generation based on a configurable template (`bankQRType`: 'dynamic'), replacing placeholders (`SO_TIEN`, `NOI_DUNG`, etc.) with real order details to generate ready-to-pay QR codes (e.g., via Sepay).
 - **Product Management:** Includes a **Topping Copy** feature that performs client-side unique scanning of existing products to suggest toppings for new ones, minimizing database dependency.
 - **Quick Notes:** Fully manageable (CRUD) via Admin with instantaneous local UI updates following Firestore operations.
 
