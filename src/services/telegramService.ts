@@ -15,7 +15,16 @@ export async function sendTelegramNotification(order: any) {
       return;
     }
 
-    const itemsText = order.items.map((item: any) => `- ${item.name} x ${item.quantity}`).join('\n');
+    const itemsText = order.items.map((item: any) => {
+      let text = `- ${item.name} (${item.size}) x ${item.quantity}`;
+      if (item.toppings && item.toppings.length > 0) {
+        text += `\n  + Topping: ${item.toppings.join(', ')}`;
+      }
+      if (item.note) {
+        text += `\n  📝 Ghi chú món: ${item.note}`;
+      }
+      return text;
+    }).join('\n');
     
     const deliveryMethodMap: Record<string, string> = {
       'delivery': 'Giao tận nơi',
@@ -24,14 +33,16 @@ export async function sendTelegramNotification(order: any) {
     };
     const deliveryMethodText = deliveryMethodMap[order.deliveryMethod] || order.deliveryMethod;
 
+    const noteText = order.note ? `\n📝 Ghi chú đơn: ${order.note}` : '';
+
     const text = `🚨 ĐƠN HÀNG MỚI
 
 👤 Khách: ${order.customerName}
 📞 ${order.customerPhone}
 📍 Địa chỉ: ${order.address}
-${order.location ? `🗺 Map: https://www.google.com/maps?q=${order.location.lat},${order.location.lng}\n` : ''}🚚 Phương thức giao: ${deliveryMethodText}
+${order.location ? `🗺 Map: https://www.google.com/maps?q=${order.location.lat},${order.location.lng}\n` : ''}🚚 Giao: ${deliveryMethodText}${noteText}
 
-🍜 Món:
+☕ Món:
 ${itemsText}
 
 💰 Tổng: ${order.totalAmount.toLocaleString('vi-VN')}đ`;
