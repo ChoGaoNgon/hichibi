@@ -97,18 +97,23 @@ Hệ thống sử dụng cơ chế **Hybrid Data Fetching** (kết hợp lấy d
 2.  Sử dụng `writeBatch` của Firestore để thực hiện ghi hàng loạt (Atomic Batch Write) các danh mục và sản phẩm mẫu.
 3.  Đảm bảo tính nhất quán của dữ liệu khi khởi tạo hệ thống mới.
 
-### Quản lý Cache:
-Hệ thống sử dụng cơ chế đồng bộ dấu thời gian (Timestamp) giữa Server và Client để tối ưu hóa hiệu suất load trang và giảm thiểu lượt đọc dữ liệu (reads) từ Firestore.
-1.  **Lưu trữ bền vững (Local Storage):** Dữ liệu Danh mục và Thực đơn được lưu trữ ngay trong `localStorage` của thiết bị khách hàng. Nhờ vậy, ngay cả khi người dùng đóng tab, tắt trình duyệt và mở lại, dữ liệu vẫn được giữ nguyên mà không bị xóa đi. Điều này giúp hệ thống phản hồi cực kỳ nhanh (dưới 0.1s) trong những lần truy cập tiếp theo.
-2.  **Quản trị Cache phía Admin:**
-    *   Firebase duy trì một document nhỏ `settings/cache_info` lưu thông tin: thời điểm làm mới cache gần nhất (`lastUpdated`) và cấu hình người dùng thiết lập: `autoUpdate` (Tự động hoặc Thủ công).
-    *   **Tự động:** Mỗi khi Admin Thêm/Sửa/Xóa sản phẩm hay danh mục, hệ thống sẽ ngầm cập nhật `lastUpdated` trên server sang thời gian hiện tại.
-    *   **Thủ công:** `lastUpdated` chỉ được thay đổi khi Admin chủ động nhấn nút làm mới. Tùy chọn Tự động/Thủ công này được tải từ Firestore mỗi khi Admin truy cập, đảm bảo không bị mất cấu hình khi đăng xuất hoặc reload trình duyệt.
-3.  **Hoạt động đồng bộ ở Client:**
-    *   Khi khách hàng truy cập màn hình Menu, ứng dụng kéo `lastUpdated` mới nhất từ Server (chỉ tốn 1 lượt đọc siêu nhẹ).
-    *   **So sánh dấu thời gian:** Client đặt dấu thời gian `lastUpdated` của Server so sánh với phiên bản đang có sẵn trong `localStorage`.
-    *   **Không thay đổi:** Nếu bằng nhau, hệ thống lấy dữ liệu thẳng từ `localStorage` đưa ra hiển thị mà không cần tải lại toàn bộ thực đơn.
-    *   **Có thay đổi mới:** Nếu Server `lastUpdated` lớn hơn bản ở Client, hệ thống gọi API Firebase để tải dữ liệu danh mục, đồ uống mới nhất. Sau đó hiển thị ngay lập tức và đồng thời ghi đè dữ liệu mới cùng `lastUpdated` mới vào `localStorage` của người dùng.
+### Quản lý Cache & Tối ưu Reads:
+Hệ thống sử dụng cơ chế liên kết kết hợp giữa Local Storage, RAM (Pinia Store) và việc đồng bộ dấu thời gian (Timestamp) giữa Server và Client để tối ưu hóa triệt để lượt đọc dữ liệu (reads) từ Cloud Firestore.
+
+#### 1. Cache Menu & Category (Local Storage)
+1.  **Lưu trữ bền vững:** Dữ liệu Danh mục và Thực đơn được lưu lại ngay trong `localStorage` phần vùng người thao tác. Giúp phản hồi ứng dụng nhanh (dưới 0.1s).
+2.  **Quản trị Cache phía Admin:** 
+    *   Firebase duy trì tài liệu `settings/cache_info` kiểm soát biến `lastUpdated` thời điểm dữ liệu Menu mới nhất.
+    *   **Tự động / Thủ công:** Có Toggle thiết lập khi Admin thay đổi thực đơn sẽ yêu cầu tự động đẩy Cache Timestamp báo thay đổi cho khách hàng hay không.
+3.  **Đồng bộ ở Client:** Khách hàng vào màn Menu chỉ pull trường `lastUpdated` (1 lần reads) để so sánh cache của local. Nếu Server Date > Local Date thì mới bỏ ra hàng trăm Reads để nạp lại Menu gốc.
+
+#### 2. Cache Lịch sử Đơn Hàng (Pinia - TTL 60s + Hot State)
+Mục tiêu là triệt tiêu hành vi tải lại toàn bộ đơn hàng (Fetch order list) rườm rà phía Customer nhưng vẫn giữ được kết quả realtime.
+1.  **Pinia Store Cache (Cold State):** Lịch sử Order được lưu trữ ở cấp độ RAM (`src/stores/customerOrders.ts`). Cấp quyền TTL (Time to Live) 60 giây. Nếu Khách hàng thoát ra, và quay ngược lại màn hình History trong phạm vi thời hạn 60s -> **0 Reads Data** (Lấy trực tiếp từ Pinia Cache đẩy ra). Phù hợp nhất khi thao tác qua lại UI.
+2.  **Micro Real-time Invalidation (Hot State):** Có một Global listener (`onSnapshot`) ở App.vue (kích thước mini limit: 2 đơn mới nhất) luôn ngầm chạy. Dù khoảng hở TTL trong phạm vi tắt fetch tổng, listener snapshot này vẫn bắt được tiến độ thay đổi: Nếu Barista bấm "Đang pha chế", App.vue sẽ âm thầm chọc thẳng vào Store Pinia sửa riêng lẻ đúng State đơn đó -> Kết quả: Trong 60s không tốn thêm bất kỳ lượt Fetch list nào nhưng giao diện vẫn nhảy số báo trạng thái theo thời gian thực (Hot-state propagation).
+3.  **Invalidate Strategy:** 
+    * Thu gọn/Xóa Trắng ngay lập tức Pinia Customer Order Cache nếu User vừa nhấn thanh toán order (cần ép refresh list Fetch mới để ngắm ảnh đơn mình mới đặt).
+    * Xóa rỗng để bảo quản bảo mật nội tư khi người dùng nhấn Đăng Xuất (Logout).
 
 ## 5. Luồng Ghi chú Sản phẩm (Item Note Flow)
 

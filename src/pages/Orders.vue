@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, computed, watch, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { 
   ArrowLeft, 
@@ -17,23 +17,25 @@ import {
 } from 'lucide-vue-next';
 import { useAuthStore } from '../stores/auth';
 import { useCartStore } from '../stores/cart';
+import { useCustomerOrderStore } from '../stores/customerOrders';
 import { db, collection, query, where, orderBy, limit, getDocs, getDoc, Timestamp, doc, updateDoc, handleFirestoreError, OperationType } from '../firebase';
 import type { Order, OrderStatus } from '../types';
 import { toast } from 'vue-sonner';
 
 const authStore = useAuthStore();
 const cartStore = useCartStore();
+const orderStore = useCustomerOrderStore();
 const router = useRouter();
 
-const orders = ref<Order[]>([]);
+const orders = computed(() => orderStore.cachedOrders);
+const hasMoreOrders = computed(() => orderStore.hasMoreOrders);
+
 const loading = ref(true);
 const selectedOrder = ref<Order | null>(null);
 const orderToCancel = ref<Order | null>(null);
 const isCancelling = ref(false);
 const isUpdatingLocation = ref(false);
 const isRefreshing = ref<string | null>(null);
-const orderLimit = ref(3);
-const hasMoreOrders = ref(true);
 
 const updateOrderLocation = async (order: Order) => {
   isUpdatingLocation.value = true;
@@ -45,6 +47,8 @@ const updateOrderLocation = async (order: Order) => {
         location: loc,
         updatedAt: Timestamp.now()
       });
+      
+      orderStore.updateOrderStatus(order.id, null, loc);
       
       if (selectedOrder.value && selectedOrder.value.id === order.id) {
         selectedOrder.value = { ...selectedOrder.value, location: loc };
@@ -88,6 +92,7 @@ const proceedCancel = async () => {
       updatedAt: Timestamp.now()
     });
     
+    orderStore.updateOrderStatus(order.id, 'cancelled');
     toast.success('Đã hủy đơn hàng thành công');
     closeDetails();
   } catch (error) {
@@ -99,8 +104,14 @@ const proceedCancel = async () => {
   }
 };
 
-const fetchOrders = async () => {
+const fetchOrders = async (force = false) => {
   if (!authStore.user) return;
+  
+  // 60s TTL
+  if (!force && Date.now() - orderStore.lastFetchTime < 60000 && orderStore.cachedOrders.length > 0) {
+    loading.value = false;
+    return;
+  }
   
   loading.value = true;
   
@@ -109,12 +120,13 @@ const fetchOrders = async () => {
       collection(db, 'orders'),
       where('userId', '==', authStore.user.uid),
       orderBy('createdAt', 'desc'),
-      limit(orderLimit.value)
+      limit(orderStore.orderLimit)
     );
 
     const snapshot = await getDocs(q);
-    orders.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
-    hasMoreOrders.value = snapshot.docs.length === orderLimit.value;
+    const fetchedOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
+    
+    orderStore.setOrders(fetchedOrders, orderStore.orderLimit, snapshot.docs.length === orderStore.orderLimit);
   } catch (error) {
     console.error('Error fetching orders', error);
     toast.error('Có lỗi xảy ra khi tải lịch sử đơn hàng');
@@ -132,19 +144,16 @@ const refreshOrderStatus = async (orderId: string) => {
     if (orderDoc.exists()) {
       const orderData = orderDoc.data() as Order;
       
-      // Update in local list
-      const index = orders.value.findIndex(o => o.id === orderId);
-      if (index !== -1) {
-        if (orders.value[index].status !== orderData.status) {
-          orders.value[index].status = orderData.status;
-          showStatusToast(orders.value[index]);
-          
-          if (selectedOrder.value?.id === orderId) {
-            selectedOrder.value = { ...selectedOrder.value, status: orderData.status };
-          }
-        } else {
-          toast.success('Trạng thái đơn hàng chưa thay đổi', { duration: 2000 });
+      const idx = orderStore.cachedOrders.findIndex(o => o.id === orderId);
+      if (idx !== -1 && orderStore.cachedOrders[idx].status !== orderData.status) {
+        orderStore.updateOrderStatus(orderId, orderData.status);
+        showStatusToast(orderData);
+        
+        if (selectedOrder.value?.id === orderId) {
+          selectedOrder.value = { ...selectedOrder.value, status: orderData.status };
         }
+      } else if (idx !== -1) {
+        toast.success('Trạng thái đơn hàng chưa thay đổi', { duration: 2000 });
       }
     }
   } catch (error) {
@@ -156,8 +165,8 @@ const refreshOrderStatus = async (orderId: string) => {
 };
 
 const loadMoreOrders = () => {
-  orderLimit.value += 3;
-  fetchOrders();
+  orderStore.setOrders(orderStore.cachedOrders, orderStore.orderLimit + 3, orderStore.hasMoreOrders);
+  fetchOrders(true);
 };
 
 const showStatusToast = (order: Order) => {
@@ -174,13 +183,11 @@ const handleGlobalStatusUpdate = (e: Event) => {
   if (!detail) return;
   const { id, status } = detail;
   
-  const index = orders.value.findIndex(o => o.id === id);
-  if (index !== -1) {
-    if (orders.value[index].status !== status) {
-      orders.value[index].status = status;
-      if (selectedOrder.value?.id === id) {
-        selectedOrder.value = { ...selectedOrder.value, status };
-      }
+  const existingOrder = orderStore.cachedOrders.find(o => o.id === id);
+  if (existingOrder && existingOrder.status !== status) {
+    orderStore.updateOrderStatus(id, status);
+    if (selectedOrder.value?.id === id) {
+      selectedOrder.value = { ...selectedOrder.value, status };
     }
   }
 };
@@ -189,8 +196,6 @@ onMounted(() => {
   fetchOrders();
   window.addEventListener('order-status-updated', handleGlobalStatusUpdate);
 });
-
-import { onUnmounted } from 'vue';
 
 onUnmounted(() => {
   window.removeEventListener('order-status-updated', handleGlobalStatusUpdate);
