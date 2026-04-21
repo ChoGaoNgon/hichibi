@@ -20,7 +20,9 @@ Hệ thống chia làm 4 vai trò chính:
   - Quản lý **Google Calendar** để tạo, xóa và theo dõi lịch làm việc, sự kiện lặp lại, mời khách tham dự.
   - Quản lý **Cache hệ thống** giúp tối ưu hóa chi phí đọc Database bên Firestore một cách chủ động hoặc tự động (Toggle Auto/Manual).
   - Khởi tạo dữ liệu mẫu (Seed Data).
-  - **Sao chép Topping nhanh**: Cho phép quét và sao chép danh sách Topping từ các sản phẩm khác để tái sử dụng nhanh chóng.
+  - **Sao chép & Phân bổ Topping thông minh**: 
+    - *Sao chép*: Gợi ý topping dựa trên các sản phẩm đã có.
+    - *Phân bổ (Truyền ngẫu)*: Cho phép rải topping từ 1 sản phẩm sang hàng loạt sản phẩm khác theo 2 chế độ (Ghi đè - xóa sạch topping cũ hoặc Ghi thêm - giữ nguyên và nối các topping mới khác tên). Tối ưu qua thao tác đồng loạt (Batch Write).
 
 - **Staff (Nhân viên)**:
   - Quản lý đơn hàng: Xử lý thao tác với tốc độ tức thời. Danh sách đơn lấy theo cơ chế Fetched Data chủ động qua các nút Làm mới (Refresh) nhằm tiết kiệm giới hạn đọc (Reads).

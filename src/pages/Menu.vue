@@ -568,7 +568,7 @@ const selectDeliveryMethod = async (method: 'delivery' | 'pickup' | 'dine-in') =
                 <!-- Toppings -->
                 <div v-if="selectedProduct.options.toppings.length > 0" class="space-y-4 pb-8">
                   <h4 class="font-black text-gray-900 uppercase tracking-widest text-[10px]">TOPPING</h4>
-                  <div class="space-y-2">
+                  <div class="flex flex-wrap gap-2">
                     <button
                       v-for="topping in selectedProduct.options.toppings"
                       :key="topping.name"
@@ -579,21 +579,13 @@ const selectDeliveryMethod = async (method: 'delivery' | 'pickup' | 'dine-in') =
                           selectedToppings.push(topping.name);
                         }
                       }"
-                      class="w-full flex justify-between items-center p-4 rounded-2xl border-2 transition-all"
+                      class="flex items-center gap-2 px-3 py-2 rounded-xl border-2 transition-all"
                       :class="selectedToppings.includes(topping.name)
-                        ? 'border-[#C04D1E] bg-[#FFF1ED]'
-                        : 'border-gray-50 bg-gray-50'"
+                        ? 'border-[#C04D1E] bg-[#FFF1ED] text-[#C04D1E]'
+                        : 'border-gray-100 bg-white text-gray-600 hover:border-[#C04D1E]/30'"
                     >
-                      <div class="flex items-center gap-3">
-                        <div :class="[
-                          'w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all',
-                          selectedToppings.includes(topping.name) ? 'bg-[#C04D1E] border-[#C04D1E] text-white' : 'border-gray-300'
-                        ]">
-                          <Check v-if="selectedToppings.includes(topping.name)" :size="14" />
-                        </div>
-                        <span class="font-black text-xs text-gray-700 uppercase tracking-tight">{{ topping.name }}</span>
-                      </div>
-                      <span class="text-[#C04D1E] font-black text-xs">+{{ topping.price.toLocaleString() }}đ</span>
+                      <span class="font-bold text-[11px] uppercase tracking-tight">{{ topping.name }}</span>
+                      <span class="font-black text-[10px]" :class="selectedToppings.includes(topping.name) ? 'text-[#C04D1E]' : 'text-gray-400'">+{{ topping.price.toLocaleString() }}đ</span>
                     </button>
                   </div>
                 </div>

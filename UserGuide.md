@@ -75,6 +75,9 @@ Hệ thống tích hợp một Dashboard báo cáo nâng cao (sử dụng 100% c
 ### Quản lý Danh mục và Sản phẩm (Tích hợp Smart Search mới)
 - Bạn có thể **Thêm / Sửa / Khóa bán (ngừng bán)** linh hoạt.
 - **Sao chép Topping nhanh**: Khi thêm hoặc sửa sản phẩm, thay vì phải nhập thủ công từng loại topping đã từng có ở sản phẩm khác, bạn có thể nhấn nút **"Sao chép từ SP khác"**. Hệ thống sẽ hiển thị danh sách tất cả các topping độc nhất hiện có để bạn chọn và áp dụng ngay lập tức.
+- **Phân bổ Topping hàng loạt**: Tại thẻ thông tin của mỗi sản phẩm ngoài màn hình lưới Quản lý Sản phẩm, nhấn vào biểu tượng **Copy (2 hình vuông xếp chồng dấu +)** ở góc phải của ảnh sản phẩm đó để bắt đầu.
+  - Cửa sổ xuất hiện cho phép bạn tick chọn cùng lúc hàng chục, hàng trăm sản phẩm khác.
+  - Chọn cơ chế: **Ghi thêm** (Chỉ chèn thêm topping mới, giữ nguyên rổ topping của SP đích) hoặc **Ghi đè** (Xóa sạch topping cũ của SP đích, reset thay bằng lô topping mới này). Thiết kế giúp Admin Setup Menu một cách thần tốc!
 - **Tính năng Tìm kiếm**: 
    - Danh mục: Tìm thẳng vào Tên và lọc.
    - Sản phẩm: Bạn có vô vàn SP? Chỉ cần nhập tên vào thanh tìm kiếm lớn bên trên góc màn hình Quản lý Sản phẩm, hoặc dùng Ô Lọc chọn sẵn đúng 1 Danh mục cần tìm. Hệ thống tối ưu không load đè lên bộ nhớ RAM. Nhấn nút "Tìm Kiếm" màu đen để thực hiện lệnh. 

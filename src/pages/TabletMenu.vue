@@ -351,7 +351,7 @@ const logout = async () => {
               <!-- Toppings -->
               <div v-if="selectedProduct.options.toppings.length > 0" class="space-y-4">
                 <h4 class="font-black text-gray-900 uppercase tracking-widest text-xs">TOPPING</h4>
-                <div class="grid grid-cols-2 gap-3">
+                <div class="flex flex-wrap gap-2">
                   <button
                     v-for="topping in selectedProduct.options.toppings"
                     :key="topping.name"
@@ -362,21 +362,13 @@ const logout = async () => {
                         selectedToppings.push(topping.name);
                       }
                     }"
-                    class="flex justify-between items-center p-4 rounded-2xl border-2 transition-all"
+                    class="flex items-center gap-2 px-3 py-2 rounded-xl border-2 transition-all"
                     :class="selectedToppings.includes(topping.name)
-                      ? 'border-orange-600 bg-orange-50'
-                      : 'border-gray-50 bg-gray-50'"
+                      ? 'border-orange-600 bg-orange-50 text-orange-600'
+                      : 'border-gray-100 bg-white text-gray-600 hover:border-orange-200'"
                   >
-                    <div class="flex items-center gap-3">
-                      <div :class="[
-                        'w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all',
-                        selectedToppings.includes(topping.name) ? 'bg-orange-600 border-orange-600 text-white' : 'border-gray-300'
-                      ]">
-                        <Check v-if="selectedToppings.includes(topping.name)" :size="14" />
-                      </div>
-                      <span class="font-black text-[10px] text-gray-700 uppercase tracking-tight">{{ topping.name }}</span>
-                    </div>
-                    <span class="text-orange-600 font-black text-[10px]">+{{ topping.price.toLocaleString() }}đ</span>
+                    <span class="font-bold text-[11px] uppercase tracking-tight">{{ topping.name }}</span>
+                    <span class="font-black text-[10px]" :class="selectedToppings.includes(topping.name) ? 'text-orange-600' : 'text-gray-400'">+{{ topping.price.toLocaleString() }}đ</span>
                   </button>
                 </div>
               </div>
