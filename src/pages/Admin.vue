@@ -282,7 +282,9 @@ const storeInfo = ref({
   bankAccount: '',
   bankOwner: '',
   bankQR: '',
-  bankQRType: 'static'
+  bankQRType: 'static',
+  wifiName: '',
+  wifiPassword: ''
 });
 const isSavingStoreInfo = ref(false);
 const orderToPrint = ref<Order | null>(null);
@@ -2095,6 +2097,27 @@ const seedData = async () => {
                   placeholder="https://instagram.com/..."
                 />
               </div>
+
+              <!-- Wifi Info -->
+              <div class="space-y-3">
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Tên Wifi (In trên hóa đơn)</label>
+                <input 
+                  v-model="storeInfo.wifiName" 
+                  type="text" 
+                  class="w-full p-5 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
+                  placeholder="VD: Hi Chibi Wifi"
+                />
+              </div>
+              <div class="space-y-3">
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Mật khẩu Wifi</label>
+                <input 
+                  v-model="storeInfo.wifiPassword" 
+                  type="text" 
+                  class="w-full p-5 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
+                  placeholder="VD: 12345678"
+                />
+              </div>
+
               <div class="space-y-3 md:col-span-2">
                 <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Google Sheets Web App URL (Hook)</label>
                 <input 
@@ -2821,6 +2844,13 @@ const seedData = async () => {
         <img v-if="getBankQRUrl()"
             :src="getBankQRUrl()"
             class="w-[140px] h-[140px] mx-auto mt-2 object-contain border" />
+      </div>
+
+      <!-- WIFI -->
+      <div v-if="storeInfo.wifiName || storeInfo.wifiPassword" class="border-t border-gray-400 pt-3 mb-4 text-center border-dashed">
+        <p class="text-[12px] font-bold uppercase">WIFI CỬA HÀNG</p>
+        <p v-if="storeInfo.wifiName" class="text-[12px]">Tên: <span class="font-black">{{ storeInfo.wifiName }}</span></p>
+        <p v-if="storeInfo.wifiPassword" class="text-[12px]">Pass: <span class="font-black">{{ storeInfo.wifiPassword }}</span></p>
       </div>
 
       <!-- FOOTER -->
