@@ -281,11 +281,33 @@ const storeInfo = ref({
   bankName: '',
   bankAccount: '',
   bankOwner: '',
-  bankQR: ''
+  bankQR: '',
+  bankQRType: 'static',
+  wifiName: '',
+  wifiPassword: ''
 });
 const isSavingStoreInfo = ref(false);
 const orderToPrint = ref<Order | null>(null);
 const orderForLabels = ref<Order | null>(null);
+
+const getBankQRUrl = () => {
+  if (storeInfo.value.bankQRType === 'dynamic') {
+    if (!orderToPrint.value || !storeInfo.value.bankName || !storeInfo.value.bankAccount || !storeInfo.value.bankQR) return '';
+    const bank = encodeURIComponent(storeInfo.value.bankName.trim());
+    const acc = encodeURIComponent(storeInfo.value.bankAccount.trim());
+    const amount = orderToPrint.value.totalAmount || 0;
+    const des = encodeURIComponent(orderToPrint.value.id.trim());
+
+    return storeInfo.value.bankQR
+      .replace('NGAN_HANG', bank)
+      .replace('SO_TAI_KHOAN', acc)
+      .replace('SO_TIEN', amount.toString())
+      .replace('NOI_DUNG', des)
+      .replace('DOWNLOAD', 'false');
+  }
+
+  return storeInfo.value.bankQR;
+};
 
 const printOrder = (order: Order) => {
   orderToPrint.value = order;
@@ -2075,6 +2097,27 @@ const seedData = async () => {
                   placeholder="https://instagram.com/..."
                 />
               </div>
+
+              <!-- Wifi Info -->
+              <div class="space-y-3">
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Tên Wifi (In trên hóa đơn)</label>
+                <input 
+                  v-model="storeInfo.wifiName" 
+                  type="text" 
+                  class="w-full p-5 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
+                  placeholder="VD: Hi Chibi Wifi"
+                />
+              </div>
+              <div class="space-y-3">
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Mật khẩu Wifi</label>
+                <input 
+                  v-model="storeInfo.wifiPassword" 
+                  type="text" 
+                  class="w-full p-5 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
+                  placeholder="VD: 12345678"
+                />
+              </div>
+
               <div class="space-y-3 md:col-span-2">
                 <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Google Sheets Web App URL (Hook)</label>
                 <input 
@@ -2131,12 +2174,22 @@ const seedData = async () => {
                   />
                 </div>
                 <div class="space-y-3">
-                  <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Link ảnh QR (URL)</label>
+                  <div class="flex items-center justify-between">
+                    <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Base URL tạo QR / Link ảnh QR tĩnh</label>
+                    <div class="flex items-center gap-4 text-xs font-bold text-gray-600">
+                      <label class="flex items-center gap-1 cursor-pointer hover:text-orange-600">
+                        <input type="radio" v-model="storeInfo.bankQRType" value="static" class="text-orange-600 focus:ring-orange-600"> QR chính chủ (Tĩnh)
+                      </label>
+                      <label class="flex items-center gap-1 cursor-pointer hover:text-orange-600">
+                        <input type="radio" v-model="storeInfo.bankQRType" value="dynamic" class="text-orange-600 focus:ring-orange-600"> QR sinh số tiền (Động)
+                      </label>
+                    </div>
+                  </div>
                   <input 
                     v-model="storeInfo.bankQR" 
                     type="text" 
-                    class="w-full p-5 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all"
-                    placeholder="https://img.vietqr.io/image/..."
+                    class="w-full p-5 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-600 transition-all block"
+                    placeholder="VD: https://qr.sepay.vn/img?acc=SO_TAI_KHOAN&bank=NGAN_HANG&amount=SO_TIEN&des=NOI_DUNG&template=qronly"
                   />
                 </div>
               </div>
@@ -2788,9 +2841,16 @@ const seedData = async () => {
         <p class="text-[12px]">{{ storeInfo.bankOwner }}</p>
 
         <!-- QR to hơn -->
-        <img v-if="storeInfo.bankQR"
-            :src="storeInfo.bankQR"
+        <img v-if="getBankQRUrl()"
+            :src="getBankQRUrl()"
             class="w-[140px] h-[140px] mx-auto mt-2 object-contain border" />
+      </div>
+
+      <!-- WIFI -->
+      <div v-if="storeInfo.wifiName || storeInfo.wifiPassword" class="border-t border-gray-400 pt-3 mb-4 text-center border-dashed">
+        <p class="text-[12px] font-bold uppercase">WIFI CỬA HÀNG</p>
+        <p v-if="storeInfo.wifiName" class="text-[12px]">Tên: <span class="font-black">{{ storeInfo.wifiName }}</span></p>
+        <p v-if="storeInfo.wifiPassword" class="text-[12px]">Pass: <span class="font-black">{{ storeInfo.wifiPassword }}</span></p>
       </div>
 
       <!-- FOOTER -->

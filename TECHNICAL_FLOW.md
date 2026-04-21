@@ -74,6 +74,7 @@ Hệ thống sử dụng cơ chế **Hybrid Data Fetching** (kết hợp lấy d
     *   **Security Check**: Firebase Security Rules kiểm tra nghiêm ngặt người dùng có quyền `staff` hoặc `admin` thật sự không trước khi cho phép ghi/sửa.
 3.  **In hóa đơn và Tem nhãn**:
     *   **In hóa đơn**: Hàm `printOrder()` lấy dữ liệu đơn hàng hiện tại, tạo một template HTML in ấn thu nhỏ (Receipt) phù hợp cho máy in nhiệt và gọi lệnh `window.print()`.
+    *   **Mã QR Thanh toán Động (Dynamic QR)**: Hỗ trợ sinh mã QR linh hoạt khi in hóa đơn. Nếu Admin chọn chế độ "QR sinh số tiền (Động)", hàm `getBankQRUrl()` sẽ sử dụng chuỗi URL mẫu (Base URL) do người dùng nhập, tự động tìm và thay thế (String Replacement) các từ khóa (`NGAN_HANG`, `SO_TAI_KHOAN`, `SO_TIEN`, `NOI_DUNG`) thành thông tin thực tế của đơn hàng (Tổng tiền thanh toán, ID đơn hàng). Giúp thu ngân nhận tiền chính xác qua các dịch vụ sinh ảnh QR nhanh như VietQR, Sepay.
     *   **In tem nhãn (Label Printing)**: Hàm `printOrderLabels()` tạo các trang in khổ 50x30mm cho từng sản phẩm trong đơn hàng. Mỗi tem chứa tên món, size, topping và ghi chú riêng biệt, giúp pha chế dán trực tiếp lên cốc/hộp. Sử dụng CSS `page-break-after: always` để tách riêng từng tem. Thông tin dư thừa (Store Name, Time, Order ID) được loại bỏ để tối đa hóa diện tích hiển thị thông tin món.
 
 4.  **Sao chép Topping (Client-Side Scanning)**:
