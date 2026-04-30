@@ -289,6 +289,30 @@ const isSavingStoreInfo = ref(false);
 const orderToPrint = ref<Order | null>(null);
 const orderForLabels = ref<Order | null>(null);
 
+const labelItemsToPrint = computed(() => {
+  if (!orderForLabels.value) return [];
+  
+  const totalCups = orderForLabels.value.items.reduce((sum, item) => sum + item.quantity, 0);
+  let currentCup = 1;
+  const labels = [];
+  
+  for (const item of orderForLabels.value.items) {
+    for (let i = 0; i < item.quantity; i++) {
+       labels.push({
+         ...item,
+         cupNumber: currentCup,
+         totalCups: totalCups,
+         originalQuantity: item.quantity,
+         orderId: orderForLabels.value.id,
+         deliveryMethod: orderForLabels.value.deliveryMethod
+       });
+       currentCup++;
+    }
+  }
+  
+  return labels;
+});
+
 const getBankQRUrl = () => {
   if (storeInfo.value.bankQRType === 'dynamic') {
     if (!orderToPrint.value || !storeInfo.value.bankName || !storeInfo.value.bankAccount || !storeInfo.value.bankQR) return '';
@@ -2929,29 +2953,40 @@ const seedData = async () => {
 
     <!-- Printable Label Container (50x30mm) -->
     <div v-if="orderForLabels" class="hidden print:block">
-      <div v-for="(item, i) in orderForLabels.items" :key="i" class="print-label-page">
-        <div class="print-label-content">
+      <div v-for="(labelItem, i) in labelItemsToPrint" :key="i" class="print-label-page">
+        <div class="print-label-content h-full flex flex-col">
+          <!-- Order Info & Cup Number -->
+          <div class="flex justify-between items-center text-[8px] font-bold mb-[2px] pb-[2px] border-b border-black/20">
+            <span class="truncate pr-1">#{{ labelItem.orderId.substring(0, 8).toUpperCase() }}</span>
+            <span class="whitespace-nowrap">{{ labelItem.cupNumber }}/{{ labelItem.totalCups }}</span>
+          </div>
+          
+          <!-- Delivery Method -->
+          <div class="text-[8px] font-bold bg-black text-white w-max px-1 mb-1 rounded-sm uppercase tracking-wider">
+            {{ labelItem.deliveryMethod === 'delivery' ? 'Giao hàng' : labelItem.deliveryMethod === 'pickup' ? 'Đến lấy' : 'Tại quán' }}
+          </div>
+
           <!-- Item Header -->
           <div class="flex justify-between items-start border-b border-black pb-1 mb-1">
             <span class="font-black text-[12px] leading-tight break-words flex-grow pr-1">
-              {{ item.quantity }}x {{ item.name }}
+              {{ labelItem.name }}
             </span>
-            <span class="font-bold text-[10px] whitespace-nowrap">({{ item.size }})</span>
+            <span class="font-bold text-[10px] whitespace-nowrap">({{ labelItem.size }})</span>
           </div>
           
           <!-- Price Info -->
           <div class="flex justify-end text-[9px] mb-1 font-bold italic opacity-80">
-            <span>{{ (item.price * item.quantity).toLocaleString() }}đ</span>
+            <span>{{ labelItem.price.toLocaleString() }}đ</span>
           </div>
 
           <!-- Toppings -->
-          <div v-if="item.toppings?.length" class="text-[9px] leading-none mb-1 font-bold">
-            <span class="uppercase text-[8px]">Topping:</span> {{ item.toppings.join(', ') }}
+          <div v-if="labelItem.toppings?.length" class="text-[9px] leading-none mb-1 font-bold">
+            <span class="uppercase text-[8px]">Topping:</span> {{ labelItem.toppings.join(', ') }}
           </div>
 
           <!-- Note -->
-          <div v-if="item.note" class="text-[9px] leading-[1.1] border-t border-dotted border-gray-400 pt-1 mt-auto font-medium">
-            <span class="font-black uppercase text-[8px]">Ghi chú:</span> {{ item.note }}
+          <div v-if="labelItem.note" class="text-[9px] leading-[1.1] border-t border-dotted border-gray-400 pt-1 mt-auto font-medium">
+            <span class="font-black uppercase text-[8px]">Ghi chú:</span> {{ labelItem.note }}
           </div>
         </div>
       </div>
@@ -2963,13 +2998,13 @@ const seedData = async () => {
         class="hidden print:block bg-white text-black w-[74mm] px-3 py-4 mx-auto text-[12px] leading-tight">
 
       <!-- HEADER -->
-      <div class="text-center mb-3 border-b border-gray-400 pb-2">
+      <div class="text-center mb-4 border-b border-black pb-3">
         <h1 class="text-[16px] font-black uppercase">{{ storeInfo.name || 'Hi chibi' }}</h1>
-        <p class="text-[11px] font-bold text-orange-600 uppercase">Bingsu & Drinks</p>
-        <p class="text-[11px]">{{ storeInfo.address || 'Địa chỉ cửa hàng' }}</p>
-        <p class="text-[11px] font-bold">SĐT: {{ storeInfo.phone || '---' }}</p>
+        <p class="text-[11px] font-bold text-black uppercase">Bingsu & Drinks</p>
+        <p class="text-[11px] mt-1">{{ storeInfo.address || 'Địa chỉ cửa hàng' }}</p>
+        <p class="text-[11px] font-bold mt-1">SĐT: {{ storeInfo.phone || '---' }}</p>
         <div v-if="storeInfo.facebook || storeInfo.instagram"
-            class="text-[11px] mt-1 font-medium">
+            class="text-[11px] mt-2 font-medium">
           <span v-if="storeInfo.facebook">FB: {{ storeInfo.facebook }}</span>
           <span v-if="storeInfo.facebook && storeInfo.instagram"> | </span>
           <span v-if="storeInfo.instagram">IG: {{ storeInfo.instagram }}</span>
@@ -2977,8 +3012,8 @@ const seedData = async () => {
       </div>
 
       <!-- INFO -->
-      <div class="mb-3 space-y-1">
-        <h2 class="text-[14px] font-black text-center mb-2">HÓA ĐƠN</h2>
+      <div class="mb-4 space-y-2">
+        <h2 class="text-[14px] font-black text-center mb-3">HÓA ĐƠN</h2>
 
         <div class="flex justify-between">
           <span class="font-bold">Mã:</span>
@@ -2997,25 +3032,25 @@ const seedData = async () => {
       </div>
 
       <!-- TABLE -->
-      <div class="border-t border-b border-gray-400 py-2 mb-3">
+      <div class="border-t border-b border-black py-2 mb-4">
         <table class="w-full text-[12px]">
           <thead>
-            <tr class="border-b border-gray-300">
-              <th class="text-left py-1">Món</th>
-              <th class="text-center py-1 w-8">SL</th>
-              <th class="text-right py-1 w-16">Tiền</th>
+            <tr class="border-b border-black">
+              <th class="text-left py-2">Món</th>
+              <th class="text-center py-2 w-8">SL</th>
+              <th class="text-right py-2 w-16">Tiền</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(item, i) in orderToPrint.items" :key="i" class="border-b border-gray-200">
-              <td class="py-2 pr-1">
-                <div class="font-bold text-[13px]">{{ item.name }} ({{ item.size }})</div>
+            <tr v-for="(item, i) in orderToPrint.items" :key="i" class="border-b border-black/30 border-dashed last:border-0">
+              <td class="py-3 pr-1">
+                <div class="font-bold text-[13px] mb-1">{{ item.name }} ({{ item.size }})</div>
                 <div v-if="item.toppings?.length" class="text-[11px]">
                   + {{ item.toppings.join(', ') }}
                 </div>
               </td>
-              <td class="text-center font-bold">{{ item.quantity }}</td>
-              <td class="text-right font-bold">
+              <td class="text-center font-bold py-3">{{ item.quantity }}</td>
+              <td class="text-right font-bold py-3">
                 {{ (item.price * item.quantity).toLocaleString() }}đ
               </td>
             </tr>
@@ -3024,13 +3059,13 @@ const seedData = async () => {
       </div>
 
       <!-- TOTAL -->
-      <div class="space-y-1 mb-4">
+      <div class="space-y-2 mb-5">
         <div v-if="orderToPrint.discountAmount" class="flex justify-between text-[12px]">
           <span>Giảm:</span>
           <span class="font-bold">-{{ orderToPrint.discountAmount.toLocaleString() }}đ</span>
         </div>
 
-        <div class="flex justify-between text-[15px] font-black border-t border-gray-400 pt-2">
+        <div class="flex justify-between text-[15px] font-black border-t border-black pt-3">
           <span>TỔNG:</span>
           <span>{{ (orderToPrint.totalAmount || 0).toLocaleString() }}đ</span>
         </div>
@@ -3038,24 +3073,24 @@ const seedData = async () => {
 
       <!-- BANK -->
       <div v-if="storeInfo.bankName && storeInfo.bankAccount"
-          class="border-t border-gray-400 pt-3 mb-4 text-center">
+          class="border-t border-black pt-4 mb-5 text-center">
 
-        <h3 class="text-[13px] font-black mb-2">CHUYỂN KHOẢN</h3>
+        <h3 class="text-[13px] font-black mb-3">CHUYỂN KHOẢN</h3>
 
-        <p class="text-[12px] font-bold">{{ storeInfo.bankName }}</p>
-        <p class="text-[13px] font-black">{{ storeInfo.bankAccount }}</p>
+        <p class="text-[12px] font-bold mb-1">{{ storeInfo.bankName }}</p>
+        <p class="text-[13px] font-black mb-1">{{ storeInfo.bankAccount }}</p>
         <p class="text-[12px]">{{ storeInfo.bankOwner }}</p>
 
         <!-- QR to hơn -->
         <img v-if="getBankQRUrl()"
             :src="getBankQRUrl()"
-            class="w-[140px] h-[140px] mx-auto mt-2 object-contain border" />
+            class="w-[140px] h-[140px] mx-auto mt-3 object-contain border border-black" />
       </div>
 
       <!-- WIFI -->
-      <div v-if="storeInfo.wifiName || storeInfo.wifiPassword" class="border-t border-gray-400 pt-3 mb-4 text-center border-dashed">
-        <p class="text-[12px] font-bold uppercase">WIFI CỬA HÀNG</p>
-        <p v-if="storeInfo.wifiName" class="text-[12px]">Tên: <span class="font-black">{{ storeInfo.wifiName }}</span></p>
+      <div v-if="storeInfo.wifiName || storeInfo.wifiPassword" class="border-t border-black pt-4 mb-5 text-center border-dashed">
+        <p class="text-[12px] font-bold uppercase mb-2">WIFI CỬA HÀNG</p>
+        <p v-if="storeInfo.wifiName" class="text-[12px] mb-1">Tên: <span class="font-black">{{ storeInfo.wifiName }}</span></p>
         <p v-if="storeInfo.wifiPassword" class="text-[12px]">Pass: <span class="font-black">{{ storeInfo.wifiPassword }}</span></p>
       </div>
 
