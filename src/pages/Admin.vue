@@ -310,22 +310,54 @@ const getBankQRUrl = () => {
 
 const printOrder = async (order: Order) => {
   orderToPrint.value = order;
+  // Ensure DOM is updated
   await nextTick();
-  // Small extra delay to ensure rendering on slower mobile devices
+  
+  // For mobile/tablet browsers, we need to wait a bit for rendering
+  // but stay close to the user action to avoid popup blockers.
   setTimeout(() => {
-    window.print();
-    orderToPrint.value = null;
-  }, 100);
+    try {
+      window.focus();
+      window.print();
+    } catch (e) {
+      console.error('Print failed:', e);
+    }
+    
+    // Crucial: Don't remove the content immediately. 
+    // Mobile browsers might be generating the PDF in the background.
+    const cleanup = () => {
+      orderToPrint.value = null;
+      window.removeEventListener('afterprint', cleanup);
+    };
+    
+    window.addEventListener('afterprint', cleanup);
+    // Fallback: cleanup after 3 seconds if afterprint doesn't fire
+    setTimeout(cleanup, 3000);
+  }, 150);
 };
 
 const printOrderLabels = async (order: Order) => {
   orderForLabels.value = order;
+  // Ensure DOM is updated
   await nextTick();
-  // Small extra delay to ensure rendering on slower mobile devices
+  
   setTimeout(() => {
-    window.print();
-    orderForLabels.value = null;
-  }, 100);
+    try {
+      window.focus();
+      window.print();
+    } catch (e) {
+      console.error('Print failed:', e);
+    }
+    
+    const cleanup = () => {
+      orderForLabels.value = null;
+      window.removeEventListener('afterprint', cleanup);
+    };
+    
+    window.addEventListener('afterprint', cleanup);
+    // Fallback: cleanup after 3 seconds if afterprint doesn't fire
+    setTimeout(cleanup, 3000);
+  }, 150);
 };
 
 const fetchStoreInfo = async () => {
