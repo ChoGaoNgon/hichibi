@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
+import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue';
 import { 
   LayoutDashboard, 
   ShoppingBag, 
@@ -308,20 +308,24 @@ const getBankQRUrl = () => {
   return storeInfo.value.bankQR;
 };
 
-const printOrder = (order: Order) => {
+const printOrder = async (order: Order) => {
   orderToPrint.value = order;
+  await nextTick();
+  // Small extra delay to ensure rendering on slower mobile devices
   setTimeout(() => {
     window.print();
     orderToPrint.value = null;
-  }, 300);
+  }, 100);
 };
 
-const printOrderLabels = (order: Order) => {
+const printOrderLabels = async (order: Order) => {
   orderForLabels.value = order;
+  await nextTick();
+  // Small extra delay to ensure rendering on slower mobile devices
   setTimeout(() => {
     window.print();
     orderForLabels.value = null;
-  }, 300);
+  }, 100);
 };
 
 const fetchStoreInfo = async () => {
