@@ -304,7 +304,8 @@ const labelItemsToPrint = computed(() => {
          totalCups: totalCups,
          originalQuantity: item.quantity,
          orderId: orderForLabels.value.id,
-         deliveryMethod: orderForLabels.value.deliveryMethod
+         deliveryMethod: orderForLabels.value.deliveryMethod,
+         orderNote: orderForLabels.value.note
        });
        currentCup++;
     }
@@ -2956,13 +2957,13 @@ const seedData = async () => {
       <div v-for="(labelItem, i) in labelItemsToPrint" :key="i" class="print-label-page">
         <div class="print-label-content h-full flex flex-col">
           <!-- Order Info & Cup Number -->
-          <div class="flex justify-between items-center text-[8px] font-bold mb-[2px] pb-[2px] border-b border-black/20">
+          <div class="flex justify-between items-center text-[8px] font-bold mb-[2px] pb-[2px] border-b border-black">
             <span class="truncate pr-1">#{{ labelItem.orderId.substring(0, 8).toUpperCase() }}</span>
             <span class="whitespace-nowrap">{{ labelItem.cupNumber }}/{{ labelItem.totalCups }}</span>
           </div>
           
           <!-- Delivery Method -->
-          <div class="text-[8px] font-bold bg-black text-white w-max px-1 mb-1 rounded-sm uppercase tracking-wider">
+          <div class="text-[8px] font-black border border-black text-black w-max px-1 mb-1 rounded-[2px] uppercase tracking-widest">
             {{ labelItem.deliveryMethod === 'delivery' ? 'Giao hàng' : labelItem.deliveryMethod === 'pickup' ? 'Đến lấy' : 'Tại quán' }}
           </div>
 
@@ -2975,7 +2976,7 @@ const seedData = async () => {
           </div>
           
           <!-- Price Info -->
-          <div class="flex justify-end text-[9px] mb-1 font-bold italic opacity-80">
+          <div class="flex justify-end text-[9px] mb-1 font-bold italic">
             <span>{{ labelItem.price.toLocaleString() }}đ</span>
           </div>
 
@@ -2985,8 +2986,9 @@ const seedData = async () => {
           </div>
 
           <!-- Note -->
-          <div v-if="labelItem.note" class="text-[9px] leading-[1.1] border-t border-dotted border-gray-400 pt-1 mt-auto font-medium">
-            <span class="font-black uppercase text-[8px]">Ghi chú:</span> {{ labelItem.note }}
+          <div v-if="labelItem.note || labelItem.orderNote" class="text-[9px] leading-[1.2] border-t border-dashed border-black pt-1 mt-auto font-bold flex flex-col gap-[2px]">
+            <span v-if="labelItem.orderNote"><span class="font-black uppercase text-[8px]">Đơn:</span> {{ labelItem.orderNote }}</span>
+            <span v-if="labelItem.note"><span class="font-black uppercase text-[8px]">Ghi chú:</span> {{ labelItem.note }}</span>
           </div>
         </div>
       </div>
